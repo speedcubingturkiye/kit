@@ -51,6 +51,7 @@ let lang: Lang = 'tr';
 try { if (localStorage.getItem('kit.lang') === 'en') lang = 'en'; } catch { /* storage blocked: keep Turkish */ }
 let wcif: Wcif | null = null;
 let scoretaking: string | null = null;
+let previewAt = 0;
 // The view and the badge options live in the address, so a link or a reload keeps them.
 const query = new URLSearchParams(location.search);
 let view: 'people' | 'badges' = query.get('v') === 'badges' ? 'badges' : 'people';
@@ -99,6 +100,7 @@ async function loadById(id: string) {
   setStatus('loading');
   try {
     [wcif, scoretaking] = await Promise.all([fetchPublicWcif(id), fetchScoretaking(id)]);
+    previewAt = 0;
     setStatus(null);
     syncUrl();
   } catch (e) {
@@ -114,6 +116,7 @@ async function loadById(id: string) {
 async function loadFile(file: File) {
   try {
     wcif = parseWcif(await file.text());
+    previewAt = 0;
     setStatus(null);
     scoretaking = await fetchScoretaking(wcif.id);
   } catch {
@@ -224,22 +227,50 @@ function select(label: string, options: [string, string][], value: string, set: 
   return l;
 }
 
+// One person's badge at a time; the print button makes everyone's pages.
 function badgeView(w: Wcif, people: Person[]) {
-  const grid = el('div', 'badges');
   const notes = el('div', 'notes');
+  const nav = el('div', 'nav');
+  const preview = el('div', 'preview');
+  const pick = document.createElement('select');
+  pick.id = 'preview-pick';
+  people.forEach((p, i) => pick.append(new Option(p.registrantId == null ? p.name : `${p.registrantId} · ${p.name}`, String(i))));
+  const count = el('span', 'count');
   const draw = async () => {
     syncUrl();
+    const { w: cw, h: ch } = cardSize();
+    const grid = sheetGrid(cw, ch);
     notes.replaceChildren(
+      el('p', 'out', onSheets()
+        ? fill(t('outSheets'), { n: people.length, pages: Math.ceil(people.length / (grid.cols * grid.rows)) })
+        : fill(t('outShop'), { n: people.length, pages: people.length * 2, w: (cw + 2 * BLEED).toLocaleString(lang), h: (ch + 2 * BLEED).toLocaleString(lang) })),
       el('p', 'hint', t(onSheets() ? 'printSheets' : 'printShop')),
       el('p', 'hint', fill(t('qrNote'), { url: qrOf(w).url }) + (scoretaking === 'wca_live' ? ' ' + t('qrWcaLive') : '')),
     );
+    if (!people.length) return;
+    previewAt = Math.min(previewAt, people.length - 1);
+    pick.value = String(previewAt);
+    count.textContent = `${previewAt + 1} / ${people.length}`;
     await loadFlags();
-    grid.replaceChildren(...cards(w, people).map((faces) => {
-      const pair = el('div', 'pair');
-      pair.append(...faces);
-      return pair;
-    }));
+    const pair = el('div', 'pair');
+    pair.append(...cards(w, [people[previewAt]])[0]);
+    preview.replaceChildren(pair);
   };
+  const arrow = (text: string, label: string, step: number) => {
+    const b = el('button', 'step', text);
+    b.setAttribute('type', 'button');
+    b.setAttribute('aria-label', label);
+    b.addEventListener('click', () => { previewAt = (previewAt + step + people.length) % people.length; draw(); });
+    return b;
+  };
+  pick.addEventListener('change', () => { previewAt = Number(pick.value); draw(); });
+  if (people.length) {
+    const label = el('label', '', t('preview'));
+    label.setAttribute('for', pick.id);
+    const row = el('div', 'nav-row');
+    row.append(arrow('‹', t('prev'), -1), pick, arrow('›', t('next'), 1), count);
+    nav.append(label, row);
+  }
   const opts = el('div', 'opts');
   opts.append(
     select(t('design'), Object.keys(DESIGNS).map((k) => [k, k]), badge.design, (v) => { badge.design = v as keyof typeof DESIGNS; draw(); }),
@@ -252,7 +283,7 @@ function badgeView(w: Wcif, people: Person[]) {
   go.addEventListener('click', () => printBadges(w, people));
   opts.append(go);
   draw();
-  return [opts, notes, grid];
+  return [opts, notes, nav, preview];
 }
 
 // A6 and A7 go on A4 sheets to print at home; the other sizes go to the print shop as single cards with bleed.

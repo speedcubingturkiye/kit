@@ -79,17 +79,25 @@ td.role-organizer, td.role-trainee-delegate { font-weight: 700; }
 .chip { display: inline-block; padding: 2px 6px; background: var(--paper-2); border: 1px solid var(--hair); font-size: 12px; white-space: nowrap; }
 .none { color: var(--ink-2); font-size: 13px; }
 #out { display: grid; gap: 16px; }
+/* Grid items may shrink below their content (a long name in a select), so narrow screens do not scroll sideways. */
+main .wrap > *, #out > * { min-width: 0; }
 .views { display: flex; flex-wrap: wrap; gap: 6px; }
 .views button { font: 700 14px var(--font); padding: 8px 14px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); cursor: pointer; }
 .views button[aria-pressed="true"] { background: var(--ink); color: #fff; }
 .opts { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; }
 .opts label { display: grid; gap: 4px; font-size: 13px; }
-.opts select { font: 15px var(--font); padding: 8px 10px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); }
+.opts select, .nav select { font: 15px var(--font); padding: 8px 10px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); }
 select:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
 .notes { display: grid; gap: 4px; }
 .notes p { margin: 0; max-width: 90ch; overflow-wrap: anywhere; }
-.badges { display: flex; flex-wrap: wrap; gap: 24px 32px; }
-.pair { display: flex; flex-wrap: wrap; gap: 10px; zoom: 0.7; }
+.notes .out { font-weight: 700; color: var(--ink); }
+.nav { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; font-size: 13px; }
+.nav-row { display: flex; align-items: center; gap: 8px; max-width: 560px; }
+.nav-row select { flex: 1 1 auto; min-width: 0; }
+.step { font: 700 20px/1 var(--font); width: 40px; height: 40px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); cursor: pointer; }
+.step:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+.count { font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.pair { display: flex; flex-wrap: wrap; gap: 10px; zoom: 0.85; }
 .pair > * { box-shadow: 0 0 0 1px var(--hair); }
 @media (max-width: 700px) { .pair { zoom: 0.5; } }
 
