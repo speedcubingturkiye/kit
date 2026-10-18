@@ -88,8 +88,13 @@ main .wrap > *, #out > * { min-width: 0; }
 .opts { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; }
 .opts label { display: grid; gap: 4px; font-size: 13px; }
 .opts select, .nav select { font: 15px var(--font); padding: 8px 10px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); }
-.checks { display: flex; flex-direction: column; gap: 4px; padding-bottom: 2px; }
-.opts label.check { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.checks { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-start; }
+.checks fieldset { margin: 0; padding: 4px 10px 8px; border: 1px solid var(--hair); display: grid; gap: 4px; }
+.checks legend { padding: 0 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+.qr-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px 16px; max-width: 760px; }
+.qr-fields label { display: grid; gap: 4px; font-size: 13px; }
+.qr-fields input { font: 15px var(--font); padding: 8px 10px; border: 1px solid var(--ink); min-width: 0; }
+label.check { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .check input { width: 16px; height: 16px; margin: 0; accent-color: var(--ink); }
 .check input:disabled + span { color: var(--ink-2); }
 select:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }

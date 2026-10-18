@@ -4,9 +4,10 @@ import { TASK_LETTER, TEXT, countryName } from './i18n.ts';
 import { dayOf, roleOf, scheduleOf, type ActivityInfo, type Person, type Task, type Wcif } from './wcif.ts';
 
 export type BadgeLang = 'en' | 'tr-en';
-export type BadgeRow = [event: string, group: string, task: string, time: string, day: string, stage: string, stageColor: string];
+export type BadgeRow = [event: string, group: string, task: string, time: string, day: string, stage: string, stageColor: string, station: string];
 export type BadgePerson = {
   name: string;
+  localName: string;
   wcaId: string;
   id: string;
   country: string;
@@ -25,15 +26,20 @@ export function multiStage(w: Wcif): boolean {
   return new Set(w.schedule.venues.flatMap((v) => v.rooms.filter((r) => r.activities.length).map((r) => r.name))).size > 1;
 }
 
-// Like Badgifier's schedule columns, times and stages are options and off by default.
-export type BadgeOptions = { times?: boolean; stages?: boolean };
+// As Badgifier's options, all off by default: times, stages and stations on the back, events the person only works
+// in left off, and the local name on the front.
+export type BadgeOptions = { times?: boolean; stages?: boolean; stations?: boolean; hideStaffOnly?: boolean; localNames?: boolean };
 
 // One row per event from the first round, in the competition's event order (the front's icons follow it; the back
 // sorts its rows by time itself): the group ('' until groups are assigned, '–' in an event the person does not compete
 // in) and the tasks ('J 1,3' or '–'). With times, also when: the start of the person's earliest group in the round, or
 // the round's start before groups are assigned, as 'HH:MM' with its day in the venue's time zone. With stages, and when
-// the competition uses more than one, where: the stage (room) and its colour.
-export function badgeRows(p: Person, w: Wcif, activities: Map<number, ActivityInfo>, { times = false, stages = false }: BadgeOptions = {}): BadgeRow[] {
+// the competition uses more than one, where: the stage (room) and its colour. With stations, the competing station
+// ('' when the WCIF has none).
+export function badgeRows(
+  p: Person, w: Wcif, activities: Map<number, ActivityInfo>,
+  { times = false, stages = false, stations = false, hideStaffOnly = false }: BadgeOptions = {},
+): BadgeRow[] {
   const first = scheduleOf(p, activities).filter((r) => r.round === 1);
   const showStages = stages && multiStage(w);
   const roundOnes = new Map<string, ActivityInfo[]>();
@@ -48,6 +54,7 @@ export function badgeRows(p: Person, w: Wcif, activities: Map<number, ActivityIn
     const competes = !!p.registration?.isCompeting && p.registration.eventIds.includes(id);
     const tasks = Object.entries(r?.tasks ?? {}) as [Task, number[]][];
     if (!competes && r?.group == null && !tasks.length) continue;
+    if (hideStaffOnly && !competes && r?.group == null) continue;
     const group = r?.group != null ? String(r.group) : competes ? '' : '–';
     const task = tasks.map(([t, groups]) => `${TASK_LETTER[t]} ${[...groups].sort((a, b) => a - b).join(',')}`).join(' ');
     let at = r ? { iso: r.first, tz: r.timezone, room: r.room, color: r.roomColor } : null;
@@ -61,7 +68,7 @@ export function badgeRows(p: Person, w: Wcif, activities: Map<number, ActivityIn
     const when = times ? at : null;
     const where = showStages ? at : null;
     rows.push([id, group, task || '–', when ? clockOf(when.iso, when.tz) : '', when ? dayOf(when.iso, when.tz) : '',
-      where ? where.room : '', where ? where.color : '']);
+      where ? where.room : '', where ? where.color : '', stations && r?.station != null ? String(r.station) : '']);
   }
   return rows;
 }
@@ -81,6 +88,8 @@ export function badgePerson(p: Person, w: Wcif, activities: Map<number, Activity
   const rows = badgeRows(p, w, activities, options);
   return {
     name: p.name,
+    // The WCIF gives a local name in brackets after the name, e.g. 'Parsa Askari Rad (پارسا عسکری راد)'.
+    localName: options.localNames ? (/\(([^)]*)\)\s*$/.exec(p.name)?.[1].trim() ?? '') : '',
     wcaId: p.wcaId ?? '',
     id: p.registrantId == null ? '' : String(p.registrantId),
     country: p.countryIso2,

@@ -33,12 +33,23 @@ const w = parseWcif(JSON.stringify({
 const acts = indexActivities(w);
 
 test('rows: first-round group and tasks per event; blank group until assigned, dash where not competing', () => {
-  assert.deepEqual(badgeRows(w.persons[0], w, acts), [['333', '2', 'J 1', '', '', '', ''], ['pyram', '', 'J 1 S 1', '', '', '', '']]);
-  assert.deepEqual(badgeRows(w.persons[1], w, acts), [['333', '–', 'J 1,2', '', '', '', '']]);
+  assert.deepEqual(badgeRows(w.persons[0], w, acts), [['333', '2', 'J 1', '', '', '', '', ''], ['pyram', '', 'J 1 S 1', '', '', '', '', '']]);
+  assert.deepEqual(badgeRows(w.persons[1], w, acts), [['333', '–', 'J 1,2', '', '', '', '', '']]);
   assert.deepEqual(badgeRows(w.persons[2], w, acts), []);
   // With times: the person's earliest own group in the round (judging group 1 before competing in group 2).
   assert.deepEqual(badgeRows(w.persons[0], w, acts, { times: true }),
-    [['333', '2', 'J 1', '10:00', '2026-10-31', '', ''], ['pyram', '', 'J 1 S 1', '12:00', '2026-10-31', '', '']]);
+    [['333', '2', 'J 1', '10:00', '2026-10-31', '', '', ''], ['pyram', '', 'J 1 S 1', '12:00', '2026-10-31', '', '', '']]);
+});
+
+test('stations, events the person only works in, local names', () => {
+  // Zeynep competes in 3x3 at station 5 (as(12) has no station, so give her one here).
+  const zeynep = { ...w.persons[0], name: 'Zeynep Arslan (زینب)', assignments: [{ activityId: 12, assignmentCode: 'competitor', stationNumber: 5 }, as(31, 'staff-judge')] };
+  assert.deepEqual(badgeRows(zeynep, w, acts, { stations: true }).map((r) => r[7]), ['5', '']);
+  // Elif only judges 3x3: with the option her row is left off.
+  assert.deepEqual(badgeRows(w.persons[1], w, acts, { hideStaffOnly: true }), []);
+  assert.deepEqual(badgeRows(zeynep, w, acts, { hideStaffOnly: true }).map((r) => r[0]), ['333', 'pyram']);
+  assert.equal(badgePerson(zeynep, w, acts, 'en', '', { localNames: true }).localName, 'زینب');
+  assert.equal(badgePerson(zeynep, w, acts, 'en').localName, '');
 });
 
 test('times and stages are options: before groups the round start, the stage once there is more than one', () => {
@@ -60,12 +71,12 @@ test('times and stages are options: before groups the round start, the stage onc
   const acts2 = indexActivities(two);
   // Always in the competition's event order (the back sorts by time itself, the front keeps this order).
   assert.deepEqual(badgeRows(two.persons[0], two, acts2, { times: true, stages: true }), [
-    ['333', '2', '–', '10:30', '2026-10-31', 'Red Stage', '#e8423f'],
-    ['222', '', '–', '10:00', '2026-11-01', 'Red Stage', '#e8423f'],
-    ['pyram', '', '–', '09:00', '2026-10-31', 'Blue Stage', '#268bcc'],
+    ['333', '2', '–', '10:30', '2026-10-31', 'Red Stage', '#e8423f', ''],
+    ['222', '', '–', '10:00', '2026-11-01', 'Red Stage', '#e8423f', ''],
+    ['pyram', '', '–', '09:00', '2026-10-31', 'Blue Stage', '#268bcc', ''],
   ]);
   // Off by default; each works without the other.
-  assert.deepEqual(badgeRows(two.persons[0], two, acts2).map((r) => r.join('|')), ['333|2|–||||', '222||–||||', 'pyram||–||||']);
+  assert.deepEqual(badgeRows(two.persons[0], two, acts2).map((r) => r.join('|')), ['333|2|–|||||', '222||–|||||', 'pyram||–|||||']);
   assert.deepEqual(badgeRows(two.persons[0], two, acts2, { stages: true }).map((r) => `${r[3]}|${r[5]}`), ['|Red Stage', '|Red Stage', '|Blue Stage']);
   assert.deepEqual(badgeRows(two.persons[0], two, acts2, { times: true }).map((r) => r[5]), ['', '', '']);
 });

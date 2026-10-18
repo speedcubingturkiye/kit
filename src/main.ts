@@ -72,10 +72,21 @@ const badge = {
   size: (query.get('s') ?? '') in SIZES ? (query.get('s') as string) : '9x12',
   land: query.get('o') === 'l',
   lang: (query.get('l') === 'tr-en' ? 'tr-en' : 'en') as BadgeLang,
-  // Times and stages on the back, off unless ticked.
+  // Badgifier's options. Times, stages and stations on the back, events the person only works in left off, and local
+  // names: off unless ticked. The task column, the front's number and the QR: on unless unticked. The QR's link and
+  // caption may be the organiser's own.
   times: query.get('t') === '1',
   stages: query.get('st') === '1',
+  stations: query.get('stn') === '1',
+  hideStaffOnly: query.get('hs') === '1',
+  localNames: query.get('ln') === '1',
+  tasks: query.get('tk') !== '0',
+  number: query.get('no') !== '0',
+  qr: query.get('qr') !== '0',
+  qrLink: query.get('ql') ?? '',
+  qrText: query.get('qt') ?? '',
 };
+type BadgeFlag = 'times' | 'stages' | 'stations' | 'hideStaffOnly' | 'localNames' | 'tasks' | 'number' | 'qr';
 // Certificate designs: the outer one draws the page (ground, frame, bands), the inner one writes on it; any of A-E
 // goes with any. event narrows the preview and the print to one event ('' for all).
 const CERT_DESIGNS = ['A', 'B', 'C', 'D', 'E'] as const;
@@ -111,6 +122,14 @@ function syncUrl() {
     q.set('l', badge.lang);
     if (badge.times) q.set('t', '1');
     if (badge.stages) q.set('st', '1');
+    if (badge.stations) q.set('stn', '1');
+    if (badge.hideStaffOnly) q.set('hs', '1');
+    if (badge.localNames) q.set('ln', '1');
+    if (!badge.tasks) q.set('tk', '0');
+    if (!badge.number) q.set('no', '0');
+    if (!badge.qr) q.set('qr', '0');
+    if (badge.qrLink) q.set('ql', badge.qrLink);
+    if (badge.qrText) q.set('qt', badge.qrText);
   }
   history.replaceState(null, '', `?${q}`);
 }
@@ -394,11 +413,13 @@ function peopleTable(w: Wcif, people: Person[]) {
   return [wrap, el('p', 'hint', `${t('taskLegend')}: ${tasks.map((k) => `${TASK_LETTER[k]} ${TEXT[lang].tasks[k]}`).join(' · ')}`)];
 }
 
-// The live-results link, or the competition page when that link is too long for the badge's QR.
+// The organiser's own link when it fits the badge's QR, else the live-results link, or the competition page when that
+// link is too long.
 function qrOf(w: Wcif) {
-  for (const url of [liveUrl(w.id, scoretaking), liveUrl(w.id, null)]) {
+  const own = badge.qrLink;
+  for (const url of [...(own ? [own] : []), liveUrl(w.id, scoretaking), liveUrl(w.id, null)]) {
     try {
-      return { url, path: qrPath(url) };
+      return { url, path: qrPath(url), own: !!own && url === own };
     } catch { /* too long; the competition page always fits */ }
   }
   throw new Error('qr');
@@ -431,10 +452,14 @@ function cardSize() {
 // Front and back of every person's badge.
 function cards(w: Wcif, people: Person[]): HTMLElement[][] {
   const activities = indexActivities(w);
-  const shared = { ...cardSize(), lang: badge.lang, comp: badgeComp(w, badge.lang), qr: qrOf(w).path, icons: ICON_URIS };
+  const shared = {
+    ...cardSize(), lang: badge.lang, comp: badgeComp(w, badge.lang), icons: ICON_URIS,
+    qr: badge.qr ? qrOf(w).path : false, qrCaption: badge.qrText, tasks: badge.tasks, number: badge.number,
+  };
+  const options = { times: badge.times, stages: badge.stages, stations: badge.stations, hideStaffOnly: badge.hideStaffOnly, localNames: badge.localNames };
   return people.map((p) => {
     const flag = flags?.[p.countryIso2];
-    const props = { ...shared, person: badgePerson(p, w, activities, badge.lang, flag ? svgUri(flag) : '', { times: badge.times, stages: badge.stages }) };
+    const props = { ...shared, person: badgePerson(p, w, activities, badge.lang, flag ? svgUri(flag) : '', options) };
     return (['front', 'back'] as const).map((face) => renderDesign(DESIGNS[badge.design], { ...props, face }));
   });
 }
@@ -479,8 +504,12 @@ function badgeView(w: Wcif, people: Person[]) {
         ? fill(t('outSheets'), { n: people.length, pages: Math.ceil(people.length / (grid.cols * grid.rows)) })
         : fill(t('outShop'), { n: people.length, pages: people.length * 2, w: (cw + 2 * BLEED).toLocaleString(lang), h: (ch + 2 * BLEED).toLocaleString(lang) })),
       el('p', 'hint', t(onSheets() ? 'printSheets' : 'printShop')),
-      el('p', 'hint', fill(t('qrNote'), { url: qrOf(w).url }) + (scoretaking === 'wca_live' ? ' ' + t('qrWcaLive') : '')),
     );
+    if (badge.qr) {
+      const q = qrOf(w);
+      notes.append(el('p', 'hint', fill(t('qrNote'), { url: q.url })
+        + (badge.qrLink && !q.own ? ' ' + t('qrTooLong') : !q.own && scoretaking === 'wca_live' ? ' ' + t('qrWcaLive') : '')));
+    }
     if (!people.length) return;
     previewAt = Math.min(previewAt, people.length - 1);
     pick.value = String(previewAt);
@@ -513,16 +542,44 @@ function badgeView(w: Wcif, people: Person[]) {
     select(t('orientation'), [['p', t('portrait')], ['l', t('landscape')]], badge.land ? 'l' : 'p', (v) => { badge.land = v === 'l'; draw(); }),
     select(t('cardLang'), [['en', t('cardEn')], ['tr-en', t('cardTrEn')]], badge.lang, (v) => { badge.lang = v as BadgeLang; draw(); }),
   );
-  // The back's time column, and its stage dots when the competition uses more than one stage.
+  // Badgifier's options, by face; stages only when the competition uses more than one. The QR's own link and caption
+  // come next when the QR is on.
+  const flag = (k: BadgeFlag, label: string, after?: (v: boolean) => void) =>
+    checkbox(t(label as keyof typeof TEXT.tr), badge[k], (v) => { badge[k] = v; after?.(v); draw(); });
+  const box = (title: string, ...items: HTMLElement[]) => {
+    const f = el('fieldset');
+    f.append(el('legend', '', title), ...items);
+    return f;
+  };
+  const text = (label: string, value: string, placeholder: string, set: (v: string) => void) => {
+    const l = el('label');
+    const i = document.createElement('input');
+    i.type = 'text';
+    i.value = value;
+    i.placeholder = placeholder;
+    i.spellcheck = false;
+    i.addEventListener('change', () => { set(i.value.trim()); draw(); });
+    l.append(el('span', '', label), i);
+    return l;
+  };
+  const qrFields = el('div', 'qr-fields');
+  qrFields.hidden = !badge.qr;
+  qrFields.append(
+    text(t('qrLink'), badge.qrLink, liveUrl(w.id, scoretaking), (v) => { badge.qrLink = v; }),
+    text(t('qrText'), badge.qrText, t('qrTextHint'), (v) => { badge.qrText = v; }),
+  );
   const checks = el('div', 'checks');
-  checks.append(checkbox(t('showTimes'), badge.times, (v) => { badge.times = v; draw(); }));
-  if (multiStage(w)) checks.append(checkbox(t('showStages'), badge.stages, (v) => { badge.stages = v; draw(); }));
+  checks.append(
+    box(t('faceFront'), flag('number', 'showNumber'), flag('localNames', 'showLocal')),
+    box(t('faceBack'), flag('times', 'showTimes'), ...(multiStage(w) ? [flag('stages', 'showStages')] : []), flag('stations', 'showStations'),
+      flag('tasks', 'showTasks'), flag('hideStaffOnly', 'hideStaffOnly'), flag('qr', 'showQr', (v) => { qrFields.hidden = !v; })),
+  );
   const go = el('button', 'go', t('print'));
   go.setAttribute('type', 'button');
   go.addEventListener('click', () => printBadges(w, people));
-  opts.append(checks, go);
+  opts.append(go);
   draw();
-  return [opts, notes, nav, preview];
+  return [opts, checks, qrFields, notes, nav, preview];
 }
 
 // A6 and A7 go on A4 sheets to print at home; the other sizes go to the print shop as single cards with bleed.
