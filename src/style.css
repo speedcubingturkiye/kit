@@ -64,10 +64,11 @@ input:focus-visible, button:focus-visible { outline: 2px solid var(--red); outli
 .empty { color: var(--ink-2); max-width: 70ch; margin: 0; }
 .comp h2 { margin: 0; font-size: 24px; font-weight: 800; }
 .comp .meta { margin: 4px 0 0; color: var(--ink-2); font-size: 14px; }
-.table-wrap { overflow-x: auto; border: 1px solid var(--hair); }
+/* Long lists scroll inside their box, with the header row kept in view. */
+.table-wrap { overflow: auto; max-height: min(70vh, 720px); border: 1px solid var(--hair); }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
 th, td { padding: 8px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--hair); }
-th { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 2px solid var(--ink); white-space: nowrap; }
+th { position: sticky; top: 0; z-index: 1; background: var(--paper); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; box-shadow: inset 0 -2px 0 var(--ink); white-space: nowrap; }
 td.num { text-align: right; color: var(--ink-2); }
 td.name { font-weight: 600; white-space: nowrap; }
 td.mono { font-family: var(--mono); font-size: 13px; white-space: nowrap; }
