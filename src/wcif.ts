@@ -57,7 +57,7 @@ export type ScheduleRow = {
   tasks: Partial<Record<Task, number[]>>;
 };
 
-const WCA_API = 'https://www.worldcubeassociation.org/api/v0';
+export const WCA_API = 'https://www.worldcubeassociation.org/api/v0';
 
 // The public WCIF needs no login. A 404 means a wrong ID; other failures are reported with their status.
 export async function fetchPublicWcif(id: string): Promise<Wcif> {
@@ -66,17 +66,17 @@ export async function fetchPublicWcif(id: string): Promise<Wcif> {
   return parseWcif(await res.text());
 }
 
-// What the WCIF lacks: the scoretaking software ('wca_live', 'internal' or 'external') and the city, for the
-// certificates. Null and '' when they cannot be read.
-export type CompetitionInfo = { scoretaking: string | null; city: string };
+// What the WCIF lacks: the scoretaking software ('wca_live', 'internal' or 'external'), the city, for the
+// certificates, and whether the results are posted. Null, '' and false when they cannot be read.
+export type CompetitionInfo = { scoretaking: string | null; city: string; resultsPosted: boolean };
 export async function fetchCompetitionInfo(id: string): Promise<CompetitionInfo> {
   try {
     const res = await fetch(`${WCA_API}/competitions/${encodeURIComponent(id.trim())}`);
-    if (!res.ok) return { scoretaking: null, city: '' };
-    const c = (await res.json()) as { scoretaking_software?: string; city?: string };
-    return { scoretaking: c.scoretaking_software ?? null, city: c.city ?? '' };
+    if (!res.ok) return { scoretaking: null, city: '', resultsPosted: false };
+    const c = (await res.json()) as { scoretaking_software?: string; city?: string; results_posted_at?: string | null };
+    return { scoretaking: c.scoretaking_software ?? null, city: c.city ?? '', resultsPosted: !!c.results_posted_at };
   } catch {
-    return { scoretaking: null, city: '' };
+    return { scoretaking: null, city: '', resultsPosted: false };
   }
 }
 

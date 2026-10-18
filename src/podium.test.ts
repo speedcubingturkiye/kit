@@ -1,7 +1,7 @@
 // Run with `npm test`. Fictional finals cover ties, DNFs, cutoffs, rounds still running and WCA Live's shape.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { complete, decidingResult, formatResult, podiumFromLive, podiumsFromWcif, type LivePodium } from './podium.ts';
+import { complete, decidingResult, formatResult, podiumFromLive, podiumsFromResults, podiumsFromWcif, type LivePodium } from './podium.ts';
 import type { Result, Wcif } from './wcif.ts';
 
 const res = (personId: number, ranking: number | null, attempts: number[], best: number, average: number): Result =>
@@ -56,6 +56,26 @@ test('WCA Live podiums: finished rounds give places', () => {
   assert.deepEqual(podiumFromLive(lp(true, 10)).places, [{ place: 1, name: 'Ada Er', wcaId: '2017ERAD01', country: 'TR', registrantId: 1, best: 8096, average: 8484 }]);
   assert.equal(podiumFromLive(lp(false, 4)).state, 'running');
   assert.equal(podiumFromLive(lp(false, 0)).state, 'waiting');
+});
+
+test('posted results: each event\'s final gives the places, ties share one, events without a posted final wait', () => {
+  const r = (event_id: string, round_type_id: string, pos: number, name: string, best: number, average: number, format_id = 'a') =>
+    ({ pos, best, average, name, country_iso2: 'TR', wca_id: null, event_id, round_type_id, format_id });
+  const p = podiumsFromResults([
+    r('333', '1', 1, 'Bora Su', 680, 700),
+    r('333', 'f', 1, 'Ada Er', 690, 705), r('333', 'f', 2, 'Bora Su', 790, 805), r('333', 'f', 2, 'Cem Ay', 790, 805), r('333', 'f', 4, 'Deniz Ok', 890, 905),
+    r('minx', 'c', 1, 'Ada Er', 5000, 5200), r('minx', 'c', 2, 'Bora Su', 6500, 0),
+    r('333bf', 'f', 1, 'Ada Er', 3000, -1, '3'), r('333bf', 'f', 2, 'Bora Su', -1, -1, '3'),
+  ], w);
+  const by = Object.fromEntries(p.map((x) => [x.event, x]));
+  assert.deepEqual(by['333'].places.map((x) => [x.place, x.name]), [[1, 'Ada Er'], [2, 'Bora Su'], [2, 'Cem Ay']]);
+  assert.equal(by['333'].state, 'done');
+  assert.equal(by['333'].round, 2);
+  assert.deepEqual(by.minx.places.map((x) => x.place), [1, 2]);
+  assert.deepEqual(by['333bf'].places.map((x) => x.name), ['Ada Er']);
+  assert.equal(by['333bf'].format, '3');
+  assert.equal(by['222'].state, 'waiting');
+  assert.deepEqual(by['222'].places, []);
 });
 
 test('deciding result: average or mean, else the best single', () => {

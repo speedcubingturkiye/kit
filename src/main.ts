@@ -7,7 +7,7 @@ import { certComp, certificates, signers, type Cert } from './certificate.ts';
 import { renderDesign } from './dc.ts';
 import { EVENTS, TASK_LETTER, TEXT, countryName, fill, type Lang } from './i18n.ts';
 import { ICONS } from './icons.ts';
-import { decidingResult, fetchLivePodiums, formatResult, podiumsFromWcif, type Podium } from './podium.ts';
+import { decidingResult, fetchLivePodiums, fetchPostedPodiums, formatResult, podiumsFromWcif, type Podium } from './podium.ts';
 import { qrPath } from './qr.ts';
 import {
   badgePeople, fetchCompetitionInfo, fetchPublicWcif, indexActivities, parseWcif, roleOf, scheduleOf,
@@ -55,11 +55,13 @@ try { if (localStorage.getItem('kit.lang') === 'en') lang = 'en'; } catch { /* s
 let wcif: Wcif | null = null;
 let scoretaking: string | null = null;
 let city = '';
+let resultsPosted = false;
 let previewAt = 0;
 let certAt = 0;
 let loadedAt = new Date();
-// Podiums for the certificates: from the WCIF as loaded, or refreshed (from WCA Live for competitions scored there).
-let podiums: { list: Podium[]; source: 'wcif' | 'live'; at: Date; note?: keyof typeof TEXT.tr } | null = null;
+// Podiums for the certificates: from the WCIF as loaded, or refreshed (from WCA Live for competitions scored there,
+// from the posted results once they are posted).
+let podiums: { list: Podium[]; source: 'wcif' | 'live' | 'results'; at: Date; note?: keyof typeof TEXT.tr } | null = null;
 // Who signs the certificates, picked per competition; the first delegate and organiser by default.
 let signPick: { delegate: string; organizer: string } | null = null;
 // The view and the badge and certificate options live in the address, so a link or a reload keeps them.
@@ -149,7 +151,7 @@ async function loadById(id: string) {
   try {
     const [w, info] = await Promise.all([fetchPublicWcif(id), fetchCompetitionInfo(id)]);
     wcif = w;
-    ({ scoretaking, city } = info);
+    ({ scoretaking, city, resultsPosted } = info);
     previewAt = 0;
     certAt = 0;
     podiums = null;
@@ -176,7 +178,7 @@ async function loadFile(file: File) {
     signPick = null;
     loadedAt = new Date();
     setStatus(null);
-    ({ scoretaking, city } = await fetchCompetitionInfo(wcif.id));
+    ({ scoretaking, city, resultsPosted } = await fetchCompetitionInfo(wcif.id));
   } catch {
     setStatus('badFile');
   }
@@ -214,7 +216,8 @@ function render() {
 
 // Certificates for every place of each finished final, one at a time in the preview; the print button makes them
 // all, or one event's. Below, every final with its state and top three. WCA Live competitions are read live from WCA
-// Live (the WCIF trails it until the next sync); for the others the WCIF is current, so a refresh reloads it.
+// Live (the WCIF trails it until the next sync); for the others the WCIF is current, so a refresh reloads it. Once the
+// results are posted, the podiums come from them.
 function certView(w: Wcif) {
   let cur = w;
   let certs: Cert[] = [];
@@ -245,7 +248,8 @@ function certView(w: Wcif) {
     // In the competition's event order (WCA Live lists its podiums in its own).
     const order = cur.events.map((e) => e.id);
     const shown = [...(podiums?.list ?? podiumsFromWcif(cur))].sort((a, b) => order.indexOf(a.event) - order.indexOf(b.event));
-    meta.textContent = fill(t(podiums?.source === 'live' ? 'sourceLive' : 'sourceWcif'), { time: time(podiums?.at ?? loadedAt) })
+    const source = { live: 'sourceLive', results: 'sourceResults', wcif: 'sourceWcif' } as const;
+    meta.textContent = fill(t(source[podiums?.source ?? 'wcif']), { time: time(podiums?.at ?? loadedAt) })
       + (podiums?.note ? ' ' + t(podiums.note) : '');
     list.replaceChildren(...(shown.length ? shown.map(podiumCard) : [el('p', 'empty', t('noRounds'))]));
     await loadFlags();
@@ -308,7 +312,10 @@ function certView(w: Wcif) {
     refresh.setAttribute('disabled', '');
     const at = new Date();
     try {
-      if (scoretaking === 'wca_live') {
+      if (resultsPosted) {
+        meta.textContent = t('loadingResults');
+        podiums = { list: await fetchPostedPodiums(cur), source: 'results', at };
+      } else if (scoretaking === 'wca_live') {
         const live = await fetchLivePodiums(cur);
         podiums = live ? { list: live, source: 'live', at } : { list: podiumsFromWcif(cur), source: 'wcif', at: loadedAt, note: 'liveNotFound' };
       } else {
@@ -324,7 +331,7 @@ function certView(w: Wcif) {
   };
   refresh.addEventListener('click', update);
   draw();
-  if (scoretaking === 'wca_live' && !podiums) update();
+  if ((resultsPosted || scoretaking === 'wca_live') && !podiums) update();
   return [bar, opts, notes, nav, preview, el('h3', 'finals', t('finals')), list];
 }
 

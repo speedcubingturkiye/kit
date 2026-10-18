@@ -1,7 +1,7 @@
 // Podiums for the certificates: each event's final round, top three, from the WCIF (live for the WCA site's own live
-// results; as of the last sync for WCA Live) or straight from WCA Live.
+// results; as of the last sync for WCA Live), straight from WCA Live, or from the posted results.
 
-import type { Result, Round, Wcif } from './wcif.ts';
+import { WCA_API, type Result, type Round, type Wcif } from './wcif.ts';
 
 export type Place = { place: number; name: string; wcaId: string | null; country: string; registrantId: number | null; best: number; average: number };
 export type PodiumState = 'waiting' | 'running' | 'done';
@@ -78,6 +78,37 @@ export async function fetchLivePodiums(w: Wcif): Promise<Podium[] | null> {
     round { number finished numEnteredResults format { id } competitionEvent { event { id } } }
     results { ranking best average person { name wcaId registrantId country { iso2 } } } } } }`, { id });
   return data.competition.podiums.map(podiumFromLive);
+}
+
+// One entry per person and round of the posted results (the WCA's /competitions/:id/results).
+export type PostedResult = {
+  pos: number; best: number; average: number; name: string; country_iso2: string; wca_id: string | null;
+  event_id: string; round_type_id: string; format_id: string;
+};
+
+// Once the results are posted, the WCIF may no longer carry them and WCA Live may no longer know the competition.
+// Each event's final ('f', or 'c' after a cutoff) gives the places; an event without a posted final stays waiting.
+export function podiumsFromResults(results: PostedResult[], w: Wcif): Podium[] {
+  return w.events.filter((e) => e.rounds?.length).map((e) => {
+    const final = results.filter((r) => r.event_id === e.id && (r.round_type_id === 'f' || r.round_type_id === 'c'));
+    const state: PodiumState = final.length ? 'done' : 'waiting';
+    return {
+      event: e.id,
+      round: e.rounds!.length,
+      format: final[0]?.format_id ?? e.rounds![e.rounds!.length - 1].format,
+      state,
+      places: final
+        .filter((r) => r.pos <= 3 && r.best > 0)
+        .sort((a, b) => a.pos - b.pos)
+        .map((r) => ({ place: r.pos, name: r.name, wcaId: r.wca_id, country: r.country_iso2, registrantId: null, best: r.best, average: r.average })),
+    };
+  });
+}
+
+export async function fetchPostedPodiums(w: Wcif): Promise<Podium[]> {
+  const res = await fetch(`${WCA_API}/competitions/${encodeURIComponent(w.id)}/results`);
+  if (!res.ok) throw new Error(`http-${res.status}`);
+  return podiumsFromResults((await res.json()) as PostedResult[], w);
 }
 
 // The result that decides the place: the average in average and mean rounds, the best single otherwise (and when
