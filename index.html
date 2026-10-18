@@ -1,0 +1,371 @@
+<!DOCTYPE html>	
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet"> 
+    
+    <link rel="icon" type="image/png" href="/assets/favicon/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon/favicon.svg" />
+    <link rel="shortcut icon" href="/assets/favicon/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/favicon/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="Dallas McNeil" />
+    <link rel="manifest" href="/assets/favicon/site.webmanifest" />
+    
+    <title>
+        Badgifier | Dallas McNeil
+    </title>
+    <link rel="stylesheet" type="text/css" href="./scss/style.css">
+    <link rel="stylesheet" type="text/css" href="./js/lib/cubingIcons.css">
+    <link rel="stylesheet" type="text/css" href="./js/lib/bootstrap-colorpicker.min.css">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-md navbar-dark bg-dark shadow-lg">
+    <a class="navbar-brand" href="https://dallasmcneil.com">
+        <img src="/assets/dallasmcneil-logo.svg" class="d-inline-block align-top mr-1" width="32"> 
+        Dallas McNeil
+    </a>
+</nav>
+<div class="jumbotron main-image d-flex align-items-center shadow-lg" style="background-image: linear-gradient( rgba(0,0,0,.5), rgba(0,0,0,.5) ), url('./assets/badgifier.jpeg') !important; ">
+    <div class="container">
+        <div class="row">
+            
+            <div class="d-block my-auto col-12">
+                <h1 class="text-center">Badgifier</h1>
+            </div>
+            
+        </div>
+    </div>
+</div>
+<div class="container shadow">
+    <div class="row">
+        <div class="col-12 content">
+            <h2>Badgifier generates customisable name badges, personal schedules and certificates for WCA competitions</h2>
+            
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title">Competition Data</h4>
+                    <p><strong>Provide information about the competition.</strong></p>
+                    <p>
+                        You should generate groups first with a tool like <a href="https://groupifier.jonatanklosko.com/">Groupifier</a>.
+                    </p>
+                    <p id="wcif-status" class="info">No competition data provided yet</p>
+                    <p>
+                        Please choose one of the three options below.
+                    </p>
+                    <hr>
+                    <h5>Fetch WCIF</h3>
+                    <p>
+                        Fetch the latest WCIF from the WCA site, just provide the competition ID.
+                    </p>
+                    <div class="input-group mb-3">
+                        <div class="input-group-prepend">
+                        <span class="input-group-text">Competition ID</span>
+                        </div>
+                        <input id="wcif-compid" type="text" class="form-control" placeholder="ID (e.g SouthAustralianOpen2022)" value="">
+                    </div>
+                    <button class="btn btn-secondary" onclick="fetchWCIF()">Fetch WCIF</button>
+                    <hr>
+                    <h5>Upload WCIF</h3>
+                    <p>
+                        Upload a WCIF file from your computer.
+                    </p>
+                    <div class="input-group mb-3">
+                        <div class="input-group-prepend">
+                          <span class="input-group-text">Upload WCIF</span>
+                        </div>
+                        <div class="custom-file">
+                          <input type="file" class="custom-file-input" id="wcifFile" onchange="readWCIF(this)">
+                          <label class="custom-file-label" id="wcifFileLabel" for="wcifFile">Choose file...</label>
+                        </div>
+                    </div>
+                    <hr>
+                    <h5>Demo WCIF</h3>
+                    <p>
+                        Use a demo WCIF file and see what Badgifier can do!
+                    </p>
+                    <button class="btn btn-secondary" onclick="useDemoWCIF()">Use Example WCIF</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title">Badge Settings</h4>
+                    <p><strong>Select what to generate and customize it</strong></p>
+                    <div class="input-group mb-3">
+                        <div class="input-group-prepend">
+                            <label class="input-group-text" for="select-template">Format</label>
+                        </div>
+                        <select class="custom-select" id="select-template" onchange="templateChanged(this)">
+                        </select>
+                    </div>
+
+                    <p><span id="template-description"></span></p>
+
+                    <hr>
+
+                    <span class="badge-only">
+                        <div class="input-group mb-3">
+                            <div class="input-group-prepend">
+                              <span class="input-group-text">Upload Background Image</span>
+                            </div>
+                            <div class="custom-file">
+                              <input type="file" class="custom-file-input" id="badgeBackgroundImage" onchange="readBadgeBackgroundImage(this)">
+                              <label class="custom-file-label" id="badgeBackgroundImgLabel" for="badgeBackgroundImage">Choose image...</label>
+                            </div>
+                        </div>
+                        <p id="badge-image-description">
+                            Background images should be landscape A7 size (105mm x 74.25mm) or 1241px x 877px is recommended. The top 50mm (591px) is available for your competitions logo. The bottom 24.25mm (286px) is reserved for badge content and this part of your image should be very simple or blank. PNG or JPEG image formats are recommended.
+                        </p>
+                    </span>
+                    <span class="certificate-only">
+                        <div class="input-group mb-3">
+                            <div class="input-group-prepend">
+                              <span class="input-group-text">Upload Background Image</span>
+                            </div>
+                            <div class="custom-file">
+                              <input type="file" class="custom-file-input" id="certBackgroundImage" onchange="readCertBackgroundImage(this)">
+                              <label class="custom-file-label" id="certBackgroundImgLabel" for="certBackgroundImage">cert-border.png</label>
+                            </div>
+                        </div>
+                        <p>
+                            Default is a border with a cube watermark. Background images should be landscape A4 size (297mm x 210mm) or 3508px x 2482px is recommended. The background image can be tinted using the 'Background Tint' option. Any transparent parts will show the page color, which can be adjusted with the 'Page Color' option. PNG or JPEG image formats are recommended.
+                        </p>
+                    </span>
+
+                    <hr>
+
+                    <div class="form-check">
+                        <input autocomplete="off" checked class="form-check-input" type="checkbox" id="includeOrgLogo" onclick="settings.includeOrgLogo = this.checked">
+                        <label class="form-check-label" for="includeOrgLogo">
+                            Include Organization Logo
+                        </label>
+                    </div>
+                    <div class="input-group mb-3">
+                        <div class="input-group-prepend">
+                          <span class="input-group-text">Upload Organization Logo</span>
+                        </div>
+                        <div class="custom-file">
+                          <input type="file" class="custom-file-input" id="orgLogoUpload" onchange="readOrganizationImage(this)">
+                          <label class="custom-file-label" id="orgLogoLabel" for="orgLogoUpload">sca.png</label>
+                        </div>
+                    </div>
+                    <p>
+                        Your regional organizations logo, defaults to Speedcubing Australia's. Any high-quality size is appropriate. PNG or JPEG image formats are recommended.
+                    </p>
+
+                    <hr>
+
+                    <span class="badge-only">
+                        <p>Schedule Columns</p>
+                        <div class="form-check">
+                            <input autocomplete="off" checked class="form-check-input" type="checkbox" id="includeTimes" onclick="settings.includeTimes = this.checked">
+                            <label class="form-check-label" for="includeTimes">
+                                Include times in schedules   
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input autocomplete="off" class="form-check-input" type="checkbox" id="includeStages" onclick="settings.includeStages = this.checked">
+                            <label class="form-check-label" for="includeStages">
+                                Include stages in schedules
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input autocomplete="off" class="form-check-input" type="checkbox" id="includeStations" onclick="settings.includeStations = this.checked">
+                            <label class="form-check-label" for="includeStations">
+                                Include stations in schedules
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input autocomplete="off" class="form-check-input" type="checkbox" id="includeStaffing" onclick="settings.includeStaffing = this.checked">
+                            <label class="form-check-label" for="includeStaffing">
+                                Include staffing in schedules
+                            </label>
+                        </div>
+                        <hr>
+                        <p>Options</p>
+                        <div class="form-check">
+                            <input autocomplete="off" class="form-check-input" type="checkbox" id="includeLocalName" onclick="settings.includeLocalName = this.checked">
+                            <label class="form-check-label" for="includeLocalName">
+                                Include local names
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input autocomplete="off" class="form-check-input" type="checkbox" id="includeCompetitorId" onclick="settings.includeCompetitorId = this.checked">
+                            <label class="form-check-label" for="includeCompetitorId">
+                                Include competitor ID on front  
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input autocomplete="off" class="form-check-input" type="checkbox" id="hideStaffOnly" onclick="settings.hideStaffOnlyAssignments = this.checked">
+                            <label class="form-check-label" for="hideStaffOnly">
+                                Hide staff only assignments in schedule
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input autocomplete="off" checked class="form-check-input" type="checkbox" id="includeQRCode" onclick="settings.showWcaLiveQrCode = this.checked">
+                            <label class="form-check-label" for="includeQRCode">
+                                Include QR code with schedules
+                            </label>
+                        </div>
+                        <div class="input-group mb-3">
+                            <div class="input-group-prepend">
+                            <span class="input-group-text">Link for QR Code</span>
+                            </div>
+                            <input autocomplete="off" type="text" class="form-control" placeholder="Link" value="https://live.worldcubeassociation.org/" onchange="settings.qrcodeLink = this.value" onblur="updateQrCode()">
+                        </div>
+                        <div class="input-group mb-3">
+                            <div class="input-group-prepend">
+                            <span class="input-group-text">QR Code Message</span>
+                            </div>
+                            <input autocomplete="off" type="text" class="form-control" placeholder="Message" value= "Live results and full schedule available on WCA Live. Good luck and have fun!" onchange="settings.qrcodeMessage = this.value">
+                        </div>
+                        <div class="form-check">
+                            <input autocomplete="off" class="form-check-input" type="checkbox" id="colorFromStage" onclick="settings.colorFromStage = this.checked">
+                            <label class="form-check-label" for="colorFromStage">
+                                Color rows based on stage color
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input autocomplete="off" class="form-check-input" type="checkbox" id="customScheduleColors" onclick="settings.customScheduleColors = this.checked" onchange="useCustomColorChanged()">
+                            <label class="form-check-label" for="customScheduleColors">
+                                Use custom row colors in schedules
+                            </label>
+                        </div>
+                        <div id="customColors">
+                            <hr>
+                            <p>Use JavaScript to set the background color for each row in the schedule. You can set schedule colors according to your competition structure (e.g different colors to match different stages, rooms, etc). Your code will be ran for each row with some information about the scheduled group. It sets the color for the row based on the input information.</p>
+                            <textarea class="form-control" id="customColorsCode" rows="20"></textarea>
+                        </div>
+                    </span>
+                    <span class="certificate-only">
+                        <div id="cert-background-tint-input" class="input-group mb-3">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text">Background Tint</span>
+                                <span class="input-group-text colorpicker-input-addon"><i></i></span>
+                            </div>
+                            <input autocomplete="off" type="text" class="form-control" onchange="settings.certBackgroundTint = this.value"/>
+                        </div>
+
+                        <div id="cert-page-color-input" class="input-group mb-3 certificate-only">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text">Page Color</span>
+                                <span class="input-group-text colorpicker-input-addon"><i></i></span>
+                            </div>
+                            <input autocomplete="off" type="text" class="form-control" onchange="settings.certPageColor = this.value"/>
+                        </div>
+
+                        <div id="cert-text-color-input" class="input-group mb-3 certificate-only">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text">Text Color</span>
+                                <span class="input-group-text colorpicker-input-addon"><i></i></span>
+                            </div>
+                            <input autocomplete="off" type="text" class="form-control" onchange="settings.certTextColor = this.value"/>
+                        </div>
+
+                        <hr>
+
+                        <div class="input-group mb-3 certificate-only">
+                            <div class="input-group-prepend">
+                            <span class="input-group-text">Signature Name for Certificate</span>
+                            </div>
+                            <input autocomplete="off" type="text" class="form-control" placeholder="Name" onchange="settings.certOrganiser = this.value">
+                        </div>
+
+                        <div class="input-group mb-3 certificate-only">
+                            <div class="input-group-prepend">
+                            <span class="input-group-text">Signature Role for Certificate</span>
+                            </div>
+                            <input autocomplete="off" type="text" class="form-control" placeholder="Role" value="WCA DELEGATE" onchange="settings.certRole = this.value">
+                        </div>
+
+                        <div class="form-check">
+                            <input autocomplete="off" class="form-check-input" type="checkbox" id="thinMargins" onclick="settings.certThinMargins = this.checked">
+                            <label class="form-check-label" for="thinMargins">
+                                Reduce margin between logos and edge of page
+                            </label>
+                        </div>
+                    </span>
+                    <span class="custom-certificate-only">
+                        <hr>
+                        <div class="input-group mb-3 custom-certificate-only">
+                            <div class="input-group-prepend">
+                            <span class="input-group-text">Custom Event Name</span>
+                            </div>
+                            <input autocomplete="off" type="text" class="form-control" placeholder="My Custom Event" onchange="settings.customCertEventName = this.value">
+                        </div>
+                        <div class="input-group mb-3 custom-certificate-only">
+                            <div class="input-group-prepend">
+                            <span class="input-group-text">Custom Result Prefix</span>
+                            </div>
+                            <input autocomplete="off" type="text" class="form-control" value="Average of:" onchange="settings.customCertResultPrefix = this.value">
+                        </div>
+                    </span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title">Document</h4>
+                    <p>
+                        'Generate' and preview the document. Adjust settings as needed and 'Generate' again. 'Download' to save the PDF document.
+                    </p>
+                    <button class="btn btn-secondary" id="preview-button" onclick="previewDocument()">Quick Preview</button>
+                    <button class="btn btn-primary" onclick="generateDocument()">Generate</button>
+                    <button class="btn btn-secondary" id="print-button" onclick="printDocument()" disabled>Download</button>
+                    <p id="status" class="info"></p>
+
+                    <div id="print-document" style="display:none;"></div>
+                    <embed id="document-preview" type="application/pdf" src="">
+                    </embed>
+                </div>
+            </div>
+
+
+            <p>If you encounter any bugs or would like to request a feature, please log an issue on <a href="https://github.com/DallasMcNeil/Badgifier">Github</a></p>
+
+            <div id="hidden-images">
+                <img style="display: none;" id="org-img" src="./assets/sca.png"/>
+                <img style="display: none;" id="wca-img" src="./assets/wca.png"/>
+                <img style="display: none;" id="wca-large-img" src="./assets/wca-large.png"/>
+                <img style="display: none;" id="badge-img" src="./assets/a7-placeholder.png"/>
+                <img style="display: none;" id="certificate-img" src="./assets/cert-border.png"/>
+                <img style="display: none;" id="qrcode-img" src="./assets/wca-live-qrcode.png"/>
+                <img style="display: none;" id="qrcode-gen">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="./js/lib/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous"></script>
+
+<script src="./js/lib/moment.js"></script>
+<script src="./js/lib/moment.tz.js"></script>
+<script src="./js/lib/PDFjs.umd.min.js"></script>
+<script src="./js/lib/qrcode.min.js"></script>
+<script src="./js/lib/bootstrap-colorpicker.min.js"></script>
+
+<script src="./js/lib/NotoSans-Regular-normal.js"></script>
+<script src="./js/lib/NotoSans-Bold-normal.js"></script>
+<script src="./js/lib/NotoSansArabic-normal.js"></script>
+<script src="./js/lib/NotoSansArmenian-normal.js"></script>
+<script src="./js/lib/NotoSansGeorgian-normal.js"></script>
+<script src="./js/lib/NotoSansThai-normal.js"></script>
+<script src="./js/lib/WenQuanYiZenHei-normal.js"></script>
+<script src="./js/lib/Barmeno-Regular-normal.js"></script>
+<script src="./js/lib/Oswald-Regular-normal.js"></script>
+<script src="./js/lib/Oswald-SemiBold-normal.js"></script>
+<script src="./js/lib/cubing-icons-normal.js"></script>
+
+<script src="./js/demoWCIF.js"></script>
+<script src="./js/utils.js"></script>
+<script src="./js/constants.js"></script>
+<script src="./js/generators.js"></script>
+<script src="./js/main.js"></script>
+
+</body>

@@ -1,0 +1,274 @@
+
+$white: #ffffff;
+$body-bg: #1b1b1c;
+$body-color: #ffffff;
+$container-bg:#37373d;
+$header-bg:#313336;
+
+$primary: #2490FF;
+$code-color:#2490FF;
+
+.project-group
+{
+  margin-bottom:60px;
+}
+
+.project-image-col
+{
+  padding: 0px !important; 
+  background-color: $container-bg;
+}
+
+.project-text-col
+{
+  background-color: $container-bg;
+  padding:15px;
+  padding-left:20px;
+  padding-bottom:5px;
+}
+
+.project-text-link, .project-text-link:hover
+{
+  color: inherit;
+}
+
+.project
+{
+  margin-bottom:30px;  
+}
+
+.content
+{
+  background-color: $container-bg;
+  margin-bottom:30px;  
+  padding:20px !important;
+}
+
+.project-image
+{
+  width: 100%;
+}
+
+.content-image
+{
+  width: 90%;
+  margin-left:5%;
+}
+
+footer
+{
+  background-color:$header-bg;
+}
+
+h1, h2, h3
+{
+  font-family: 'DM Sans', sans-serif;
+}
+
+p, a
+{
+  font-family: 'Open Sans', sans-serif;
+}
+
+.introduction
+{
+  font-weight: 200;
+  font-size:28px;
+  text-align: center;
+  font-style:italic;
+}
+
+h2
+{
+  font-size: 36px !important;
+}
+
+h3
+{
+  font-size: 28px;
+}
+
+.fa 
+{
+    font-size: 32px;
+}
+
+.notification
+{
+    display: block;
+    padding: 10px;
+    padding-left: 25px;
+    padding-right: 25px;
+    font-size: 18px;
+    text-align: center;
+    margin: 0px;
+    background-color:$primary;
+}
+
+// Bootstrap and its default variables
+@import "./scss/bootstrap";
+
+.navbar
+{
+    background-color: $header-bg !important;
+}
+
+.main-image
+{
+  height: 512px;
+  background-position: center, center;
+  background-size:cover;
+  margin-bottom:40px;
+  border-radius: 0 !important;
+}
+
+// Project badge styles
+.badge-academia
+{
+    background-color:#c76b1b;
+}
+
+.badge-script-language
+{
+    background-color:#278d24;
+}
+
+.badge-compile-language
+{
+    background-color:#c2213c;
+}
+
+.badge-graphics
+{
+    background-color:#7b24c2;
+}
+
+.badge-security
+{
+    background-color:#1ca58c;
+}
+
+.badge-cubing
+{
+    background-color:#b2af0e;
+}
+
+.badge-platform
+{
+    background-color:#747c86;
+}
+
+/* Extra small devices */
+h1 {
+  font-size: 40px !important;
+}
+
+/* Small devices (landscape phones, 576px and up) */
+@media (min-width: 576px) {  h1 {
+  font-size: 40px !important;
+}}
+
+/* Medium devices (tablets, 768px and up) */
+@media (min-width: 768px) { h1 {
+  font-size: 40px !important;
+}}
+
+/* Large devices (desktops, 992px and up) */
+@media (min-width: 992px) { h1 {
+  font-size: 50px !important;
+}}
+
+/* Extra large devices (large desktops, 1200px and up) */
+@media (min-width: 1200px) { 
+h1 {
+  font-size: 50px !important;
+}}
+
+.fa-envelope, .fa-github
+{
+  color:$white !important;
+}
+
+.fa-envelope:hover, .fa-github:hover
+{
+  color:darken($white, 15%) !important;
+}
+
+.fa-twitter-square
+{
+  color:#1DA1F2 !important;
+}
+
+.fa-twitter-square:hover
+{
+  color:darken(#1DA1F2, 15%) !important;
+}
+
+.fa-linkedin-square
+{
+  color:#2867B2 !important;
+}
+
+.fa-linkedin-square:hover
+{
+  color:darken(#2867B2, 15%) !important;
+}
+
+
+.card {
+  background-color: #4a4c50;
+  margin-bottom: 15px;
+}
+
+hr {
+  background-color: $white;
+}
+
+
+
+
+/* Documents */
+
+#document-preview {
+  width: 100%;
+  height: 600px;
+  display:block;
+}
+
+/* Page classes */
+
+.print-page {
+  position: relative;
+  margin: 0mm 0mm 0mm 0mm;
+  padding: 0mm 0mm 0mm 0mm;
+}
+
+/* Badge classes */
+
+.print-badge {
+  position: absolute;
+  top: 0cm;
+  left: 0cm;
+  margin: 0mm 0mm 0mm 0mm;
+  padding: 0mm 0mm 0mm 0mm;
+}
+
+#status, #wcif-status {
+  font-size: 20px;
+}
+
+#status.info, #wcif-status.info {
+  color: #00c0ff;
+}
+
+#status.warn, #wcif-status.warn {
+  color: #ffd500;
+}
+
+#status.error, #wcif-status.error {
+  color: #ff0000;
+}
+
+#customColorsCode {
+  font-family: "Lucida Console", Courier, monospace;
+}
