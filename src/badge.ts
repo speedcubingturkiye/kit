@@ -20,14 +20,22 @@ export type BadgePerson = {
 const clockOf = (iso: string, timezone: string) =>
   new Intl.DateTimeFormat('en-GB', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso));
 
+// Whether the competition's schedule uses more than one stage (room).
+export function multiStage(w: Wcif): boolean {
+  return new Set(w.schedule.venues.flatMap((v) => v.rooms.filter((r) => r.activities.length).map((r) => r.name))).size > 1;
+}
+
+// Like Badgifier's schedule columns, times and stages are options and off by default; stages need times.
+export type BadgeOptions = { times?: boolean; stages?: boolean };
+
 // One row per event from the first round: the group ('' until groups are assigned, '–' in an event the person does
-// not compete in), the tasks ('J 1,3' or '–'), and when and where. The time is the start of the person's earliest
-// group in the round, or the round's start before groups are assigned, as 'HH:MM' with its day in the venue's time
-// zone; the stage (room) and its colour are given only when the competition uses more than one. Rows are in time
-// order; rows without a time come last, in the competition's event order.
-export function badgeRows(p: Person, w: Wcif, activities: Map<number, ActivityInfo>): BadgeRow[] {
+// not compete in) and the tasks ('J 1,3' or '–'), in the competition's event order. With times, also when: the start
+// of the person's earliest group in the round, or the round's start before groups are assigned, as 'HH:MM' with its
+// day in the venue's time zone, and the rows in time order (rows without a time last). With stages too, and when the
+// competition uses more than one, where: the stage (room) and its colour.
+export function badgeRows(p: Person, w: Wcif, activities: Map<number, ActivityInfo>, { times = false, stages = false }: BadgeOptions = {}): BadgeRow[] {
   const first = scheduleOf(p, activities).filter((r) => r.round === 1);
-  const stages = new Set(w.schedule.venues.flatMap((v) => v.rooms.filter((r) => r.activities.length).map((r) => r.name))).size > 1;
+  const showStages = times && stages && multiStage(w);
   const roundOnes = new Map<string, ActivityInfo[]>();
   for (const a of activities.values()) {
     if (a.code !== a.parentCode || !a.code.endsWith('-r1')) continue;
@@ -50,9 +58,11 @@ export function badgeRows(p: Person, w: Wcif, activities: Map<number, ActivityIn
       const one = new Set(round.map((x) => x.room)).size === 1;
       at = { iso: a.start, tz: a.timezone, room: one ? a.room : '', color: one ? a.roomColor : '' };
     }
-    rows.push([id, group, task || '–', at ? clockOf(at.iso, at.tz) : '', at ? dayOf(at.iso, at.tz) : '',
-      stages && at ? at.room : '', stages && at ? at.color : '']);
+    const when = times ? at : null;
+    rows.push([id, group, task || '–', when ? clockOf(when.iso, when.tz) : '', when ? dayOf(when.iso, when.tz) : '',
+      showStages && when ? when.room : '', showStages && when ? when.color : '']);
   }
+  if (!times) return rows;
   const key = (x: BadgeRow) => (x[3] ? `${x[4]} ${x[3]}` : '~');
   return rows.sort((a, b) => key(a).localeCompare(key(b)));
 }
@@ -67,9 +77,9 @@ export function badgeLegend(rows: BadgeRow[]): [string, string, string][] {
 }
 
 // flag: an image URI for the country's flag; the designs draw Türkiye's and Italy's themselves.
-export function badgePerson(p: Person, w: Wcif, activities: Map<number, ActivityInfo>, lang: BadgeLang, flag = ''): BadgePerson {
+export function badgePerson(p: Person, w: Wcif, activities: Map<number, ActivityInfo>, lang: BadgeLang, flag = '', options: BadgeOptions = {}): BadgePerson {
   const role = roleOf(p);
-  const rows = badgeRows(p, w, activities);
+  const rows = badgeRows(p, w, activities, options);
   return {
     name: p.name,
     wcaId: p.wcaId ?? '',

@@ -2,7 +2,7 @@ import './style.css';
 import badgeA from './designs/BadgeV1_1.dc.html?dc';
 import badgeB from './designs/BadgeV2_1.dc.html?dc';
 import certDesign from './designs/SertifikaKarma.dc.html?dc';
-import { badgeComp, badgePerson, liveUrl, sheetGrid, type BadgeLang } from './badge.ts';
+import { badgeComp, badgePerson, liveUrl, multiStage, sheetGrid, type BadgeLang } from './badge.ts';
 import { certComp, certificates, signers, type Cert } from './certificate.ts';
 import { renderDesign } from './dc.ts';
 import { EVENTS, TASK_LETTER, TEXT, countryName, fill, type Lang } from './i18n.ts';
@@ -72,6 +72,9 @@ const badge = {
   size: (query.get('s') ?? '') in SIZES ? (query.get('s') as string) : '9x12',
   land: query.get('o') === 'l',
   lang: (query.get('l') === 'tr-en' ? 'tr-en' : 'en') as BadgeLang,
+  // Times and stages on the back, off unless ticked.
+  times: query.get('t') === '1',
+  stages: query.get('st') === '1',
 };
 // Certificate designs: the outer one draws the page (ground, frame, bands), the inner one writes on it; any of A-E
 // goes with any. event narrows the preview and the print to one event ('' for all).
@@ -106,6 +109,8 @@ function syncUrl() {
     q.set('s', badge.size);
     q.set('o', badge.land ? 'l' : 'p');
     q.set('l', badge.lang);
+    if (badge.times) q.set('t', '1');
+    if (badge.stages) q.set('st', '1');
   }
   history.replaceState(null, '', `?${q}`);
 }
@@ -429,7 +434,7 @@ function cards(w: Wcif, people: Person[]): HTMLElement[][] {
   const shared = { ...cardSize(), lang: badge.lang, comp: badgeComp(w, badge.lang), qr: qrOf(w).path, icons: ICON_URIS };
   return people.map((p) => {
     const flag = flags?.[p.countryIso2];
-    const props = { ...shared, person: badgePerson(p, w, activities, badge.lang, flag ? svgUri(flag) : '') };
+    const props = { ...shared, person: badgePerson(p, w, activities, badge.lang, flag ? svgUri(flag) : '', { times: badge.times, stages: badge.stages }) };
     return (['front', 'back'] as const).map((face) => renderDesign(DESIGNS[badge.design], { ...props, face }));
   });
 }
@@ -440,6 +445,16 @@ function select(label: string, options: [string, string][], value: string, set: 
   for (const [v, text] of options) s.append(new Option(text, v, false, v === value));
   s.addEventListener('change', () => set(s.value));
   l.append(el('span', '', label), s);
+  return l;
+}
+
+function checkbox(label: string, checked: boolean, set: (v: boolean) => void) {
+  const l = el('label', 'check');
+  const c = document.createElement('input');
+  c.type = 'checkbox';
+  c.checked = checked;
+  c.addEventListener('change', () => set(c.checked));
+  l.append(c, el('span', '', label));
   return l;
 }
 
@@ -498,10 +513,17 @@ function badgeView(w: Wcif, people: Person[]) {
     select(t('orientation'), [['p', t('portrait')], ['l', t('landscape')]], badge.land ? 'l' : 'p', (v) => { badge.land = v === 'l'; draw(); }),
     select(t('cardLang'), [['en', t('cardEn')], ['tr-en', t('cardTrEn')]], badge.lang, (v) => { badge.lang = v as BadgeLang; draw(); }),
   );
+  // The back's time column, and its stage dots when the competition uses more than one stage (they need the times).
+  const checks = el('div', 'checks');
+  const stages = checkbox(t('showStages'), badge.stages, (v) => { badge.stages = v; draw(); });
+  const stagesBox = stages.querySelector('input') as HTMLInputElement;
+  stagesBox.disabled = !badge.times;
+  checks.append(checkbox(t('showTimes'), badge.times, (v) => { badge.times = v; stagesBox.disabled = !v; draw(); }));
+  if (multiStage(w)) checks.append(stages);
   const go = el('button', 'go', t('print'));
   go.setAttribute('type', 'button');
   go.addEventListener('click', () => printBadges(w, people));
-  opts.append(go);
+  opts.append(checks, go);
   draw();
   return [opts, notes, nav, preview];
 }

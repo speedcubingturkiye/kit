@@ -33,10 +33,12 @@ const w = parseWcif(JSON.stringify({
 const acts = indexActivities(w);
 
 test('rows: first-round group and tasks per event; blank group until assigned, dash where not competing', () => {
-  // The time is the person's earliest own group in the round (judging group 1 before competing in group 2).
-  assert.deepEqual(badgeRows(w.persons[0], w, acts), [['333', '2', 'J 1', '10:00', '2026-10-31', '', ''], ['pyram', '', 'J 1 S 1', '12:00', '2026-10-31', '', '']]);
-  assert.deepEqual(badgeRows(w.persons[1], w, acts), [['333', '–', 'J 1,2', '10:00', '2026-10-31', '', '']]);
+  assert.deepEqual(badgeRows(w.persons[0], w, acts), [['333', '2', 'J 1', '', '', '', ''], ['pyram', '', 'J 1 S 1', '', '', '', '']]);
+  assert.deepEqual(badgeRows(w.persons[1], w, acts), [['333', '–', 'J 1,2', '', '', '', '']]);
   assert.deepEqual(badgeRows(w.persons[2], w, acts), []);
+  // With times: the person's earliest own group in the round (judging group 1 before competing in group 2).
+  assert.deepEqual(badgeRows(w.persons[0], w, acts, { times: true }),
+    [['333', '2', 'J 1', '10:00', '2026-10-31', '', ''], ['pyram', '', 'J 1 S 1', '12:00', '2026-10-31', '', '']]);
 });
 
 test('rows in time order with stages: before groups the round start, the stage once there is more than one', () => {
@@ -55,11 +57,16 @@ test('rows in time order with stages: before groups the round start, the stage o
     },
     persons: [{ registrantId: 1, name: 'Ada Su', wcaUserId: 1, wcaId: null, countryIso2: 'TR', roles: [], registration: reg(['333', '222', 'pyram']), assignments: [as(12, 'competitor')] }],
   }));
-  assert.deepEqual(badgeRows(two.persons[0], two, indexActivities(two)), [
+  const acts2 = indexActivities(two);
+  assert.deepEqual(badgeRows(two.persons[0], two, acts2, { times: true, stages: true }), [
     ['pyram', '', '–', '09:00', '2026-10-31', 'Blue Stage', '#268bcc'],
     ['333', '2', '–', '10:30', '2026-10-31', 'Red Stage', '#e8423f'],
     ['222', '', '–', '10:00', '2026-11-01', 'Red Stage', '#e8423f'],
   ]);
+  // Off by default and in event order; stages need times.
+  assert.deepEqual(badgeRows(two.persons[0], two, acts2).map((r) => r.join('|')), ['333|2|–||||', '222||–||||', 'pyram||–||||']);
+  assert.deepEqual(badgeRows(two.persons[0], two, acts2, { stages: true }).map((r) => r[5]), ['', '', '']);
+  assert.deepEqual(badgeRows(two.persons[0], two, acts2, { times: true }).map((r) => r[5]), ['', '', '']);
 });
 
 test('letters beyond J, S and R (D delegate, E data entry): the legend adds only those, in the letters\' order', () => {

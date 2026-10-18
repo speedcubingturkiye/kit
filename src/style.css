@@ -88,6 +88,10 @@ main .wrap > *, #out > * { min-width: 0; }
 .opts { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; }
 .opts label { display: grid; gap: 4px; font-size: 13px; }
 .opts select, .nav select { font: 15px var(--font); padding: 8px 10px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); }
+.checks { display: flex; flex-direction: column; gap: 4px; padding-bottom: 2px; }
+.opts label.check { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.check input { width: 16px; height: 16px; margin: 0; accent-color: var(--ink); }
+.check input:disabled + span { color: var(--ink-2); }
 select:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
 .notes { display: grid; gap: 4px; }
 .notes p { margin: 0; max-width: 90ch; overflow-wrap: anywhere; }
