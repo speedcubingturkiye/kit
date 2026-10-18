@@ -91,7 +91,7 @@ body{margin:0}
 </div>
 <sc-for list="{{ tg.rows }}" as="r" hint-placeholder-count="6">
 <sc-if value="{{ r.isDay }}" hint-placeholder-val="{{ false }}"><div style="{{ r.dayRow }}">{{ r.dayText }}</div></sc-if><sc-if value="{{ r.isRow }}" hint-placeholder-val="{{ true }}"><div style="{{ r.row }}">
-<sc-if value="{{ r.hasTime }}" hint-placeholder-val="{{ false }}"><div style="{{ r.tm }}"><sc-if value="{{ r.hasStage }}" hint-placeholder-val="{{ false }}"><span style="{{ r.dot }}"></span></sc-if>{{ r.time }}</div></sc-if><div style="{{ r.evCell }}"><sc-if value="{{ r.d }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 500 500" aria-hidden="true" style="{{ r.icon }}"><path d="{{ r.d }}" fill="currentColor" fill-rule="{{ r.fr }}"></path></svg></sc-if><sc-if value="{{ r.src }}" hint-placeholder-val="{{ false }}"><img alt="" src="{{ r.src }}" style="{{ r.icon }}"></sc-if><span style="{{ r.evText }}">{{ r.label }}</span></div>
+<sc-if value="{{ r.hasTime }}" hint-placeholder-val="{{ false }}"><div style="{{ r.tm }}"><sc-if value="{{ r.hasStage }}" hint-placeholder-val="{{ false }}"><span style="{{ r.dot }}"></span></sc-if>{{ r.time }}</div></sc-if><div style="{{ r.evCell }}"><sc-if value="{{ r.dotEv }}" hint-placeholder-val="{{ false }}"><span style="{{ r.dot }}"></span></sc-if><sc-if value="{{ r.d }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 500 500" aria-hidden="true" style="{{ r.icon }}"><path d="{{ r.d }}" fill="currentColor" fill-rule="{{ r.fr }}"></path></svg></sc-if><sc-if value="{{ r.src }}" hint-placeholder-val="{{ false }}"><img alt="" src="{{ r.src }}" style="{{ r.icon }}"></sc-if><span style="{{ r.evText }}">{{ r.label }}</span></div>
 <div style="{{ r.c }}">{{ r.grp }}</div>
 <div style="{{ r.t }}">{{ r.task }}</div>
 </div></sc-if>
@@ -208,8 +208,11 @@ class Component extends DCLogic {
     const hasTime = rows.some((r) => r.time);
     const hasStage = rows.some((r) => r.stage);
     const multiDay = new Set(rows.filter((r) => r.day).map((r) => r.day)).size > 1;
+    // The back lists its rows in time order (rows without a time last); the front keeps the competition's event order.
+    const timeKey = (r) => (r.time ? r.day + ' ' + r.time : '~');
+    const backRows = hasTime ? rows.slice().sort((a, b) => timeKey(a).localeCompare(timeKey(b))) : rows;
     const legendStages = [];
-    rows.forEach((r) => { if (r.stage && !legendStages.some((x) => x.name === r.stage)) legendStages.push({ name: r.stage, color: r.stageColor }); });
+    backRows.forEach((r) => { if (r.stage && !legendStages.some((x) => x.name === r.stage)) legendStages.push({ name: r.stage, color: r.stageColor }); });
     // Task letters other than J, S and R that this badge uses (props.person.legend: letter, Turkish, English); the
     // legend adds them after the three it always explains.
     const legendExtra = (P.legend || []).map((x) => ({ k: x[0], tr: x[1], en: x[2], both: x[1] + ' · ' + x[2] }));
@@ -403,7 +406,7 @@ class Component extends DCLogic {
       const tableH = contentH - legendH - bottomH - m * 0.8 - m * 0.3 - 1;
       // The table's lines: the rows, with a day heading before each day's first row when the rows span days.
       const items = [];
-      rows.forEach((r) => {
+      backRows.forEach((r) => {
         if (multiDay && r.day && (!items.length || items[items.length - 1].day !== r.day)) items.push({ day: r.day, heading: true });
         items.push(r);
       });
@@ -444,7 +447,7 @@ class Component extends DCLogic {
       const iconSt = { display: 'block', flex: 'none', width: mm(iconR), height: mm(iconR), color: '#1a1a1a' };
       const evText = { fontWeight: 600 };
       // A label longer than its column (Face Turning Octahedron on small cards) is set smaller to fit.
-      const evW = gw - colTime - colGrp - colTask - iconR - rf * 0.5;
+      const evW = gw - colTime - colGrp - colTask - iconR - rf * 0.5 - (hasStage && !hasTime ? rf * 1.05 : 0);
       const fitLabel = (t) => (tw(t, W600) * rf <= evW ? evText : Object.assign({}, evText, { fontSize: mm(evW / tw(t, W600)) }));
       // In a narrow table a long name that would drop below three quarters of the row text uses its short form.
       const SHORT = { fto: 'FTO' };
@@ -480,6 +483,7 @@ class Component extends DCLogic {
           tm: tmStyle,
           time: r.time,
           dot: Object.assign({}, dotStyle, { background: r.stageColor || 'transparent' }),
+          dotEv: hasStage && !hasTime,
           row: rowStyle,
           evCell: evCell,
           evText: fitLabel(labelOf(r.ev)),

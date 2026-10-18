@@ -513,13 +513,10 @@ function badgeView(w: Wcif, people: Person[]) {
     select(t('orientation'), [['p', t('portrait')], ['l', t('landscape')]], badge.land ? 'l' : 'p', (v) => { badge.land = v === 'l'; draw(); }),
     select(t('cardLang'), [['en', t('cardEn')], ['tr-en', t('cardTrEn')]], badge.lang, (v) => { badge.lang = v as BadgeLang; draw(); }),
   );
-  // The back's time column, and its stage dots when the competition uses more than one stage (they need the times).
+  // The back's time column, and its stage dots when the competition uses more than one stage.
   const checks = el('div', 'checks');
-  const stages = checkbox(t('showStages'), badge.stages, (v) => { badge.stages = v; draw(); });
-  const stagesBox = stages.querySelector('input') as HTMLInputElement;
-  stagesBox.disabled = !badge.times;
-  checks.append(checkbox(t('showTimes'), badge.times, (v) => { badge.times = v; stagesBox.disabled = !v; draw(); }));
-  if (multiStage(w)) checks.append(stages);
+  checks.append(checkbox(t('showTimes'), badge.times, (v) => { badge.times = v; draw(); }));
+  if (multiStage(w)) checks.append(checkbox(t('showStages'), badge.stages, (v) => { badge.stages = v; draw(); }));
   const go = el('button', 'go', t('print'));
   go.setAttribute('type', 'button');
   go.addEventListener('click', () => printBadges(w, people));

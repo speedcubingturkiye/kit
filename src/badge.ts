@@ -25,17 +25,17 @@ export function multiStage(w: Wcif): boolean {
   return new Set(w.schedule.venues.flatMap((v) => v.rooms.filter((r) => r.activities.length).map((r) => r.name))).size > 1;
 }
 
-// Like Badgifier's schedule columns, times and stages are options and off by default; stages need times.
+// Like Badgifier's schedule columns, times and stages are options and off by default.
 export type BadgeOptions = { times?: boolean; stages?: boolean };
 
-// One row per event from the first round: the group ('' until groups are assigned, '–' in an event the person does
-// not compete in) and the tasks ('J 1,3' or '–'), in the competition's event order. With times, also when: the start
-// of the person's earliest group in the round, or the round's start before groups are assigned, as 'HH:MM' with its
-// day in the venue's time zone, and the rows in time order (rows without a time last). With stages too, and when the
-// competition uses more than one, where: the stage (room) and its colour.
+// One row per event from the first round, in the competition's event order (the front's icons follow it; the back
+// sorts its rows by time itself): the group ('' until groups are assigned, '–' in an event the person does not compete
+// in) and the tasks ('J 1,3' or '–'). With times, also when: the start of the person's earliest group in the round, or
+// the round's start before groups are assigned, as 'HH:MM' with its day in the venue's time zone. With stages, and when
+// the competition uses more than one, where: the stage (room) and its colour.
 export function badgeRows(p: Person, w: Wcif, activities: Map<number, ActivityInfo>, { times = false, stages = false }: BadgeOptions = {}): BadgeRow[] {
   const first = scheduleOf(p, activities).filter((r) => r.round === 1);
-  const showStages = times && stages && multiStage(w);
+  const showStages = stages && multiStage(w);
   const roundOnes = new Map<string, ActivityInfo[]>();
   for (const a of activities.values()) {
     if (a.code !== a.parentCode || !a.code.endsWith('-r1')) continue;
@@ -59,12 +59,11 @@ export function badgeRows(p: Person, w: Wcif, activities: Map<number, ActivityIn
       at = { iso: a.start, tz: a.timezone, room: one ? a.room : '', color: one ? a.roomColor : '' };
     }
     const when = times ? at : null;
+    const where = showStages ? at : null;
     rows.push([id, group, task || '–', when ? clockOf(when.iso, when.tz) : '', when ? dayOf(when.iso, when.tz) : '',
-      showStages && when ? when.room : '', showStages && when ? when.color : '']);
+      where ? where.room : '', where ? where.color : '']);
   }
-  if (!times) return rows;
-  const key = (x: BadgeRow) => (x[3] ? `${x[4]} ${x[3]}` : '~');
-  return rows.sort((a, b) => key(a).localeCompare(key(b)));
+  return rows;
 }
 
 // The task letters on a badge besides J, S and R, which every badge legend explains, as [letter, Turkish, English]
