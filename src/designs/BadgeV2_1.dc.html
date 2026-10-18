@@ -440,15 +440,23 @@ class Component extends DCLogic {
       const showEn = tier >= 2;
       const headU = showEn && !en ? 1.9 : 1.15;
       const rowH = Math.max(2.8, Math.min(clamp(s * 0.1, 4.4, 8.6), tableH / (perGroup + headU)));
-      const rf = rowH * 0.5;
-      const iconR = rowH * 0.6;
-      const colGrp = Math.max(rf * 3.4, 7) * (en ? 1.12 : 1);
-      const colTask = Math.max(rf * 3.8, 8);
-      const colTime = hasTime ? Math.max(rf * 3.3, 7.5) + (hasStage ? rf * 1.05 : 0) : 0;
-      // Wide enough for the numbers and the heading (MASA, or STATION on English badges).
-      const colStn = hasStation ? Math.max(rf * 2.8, (en ? 7.6 : 5.6) * clamp(rf * 0.72, 1.6, 2.9) * 0.75) : 0;
+      const rf0 = rowH * 0.5;
+      const hTr0 = clamp(rf0 * 0.72, 1.6, 2.9);
+      // The time, group, station and task columns. The station column is wide enough for the numbers and the
+      // heading (MASA, or STATION on English badges).
+      const fixed = [hasTime ? Math.max(rf0 * 3.3, 7.5) + (hasStage ? rf0 * 1.05 : 0) : 0, Math.max(rf0 * 3.4, 7) * (en ? 1.12 : 1),
+        hasStation ? Math.max(rf0 * 2.8, (en ? 7.6 : 5.6) * hTr0 * 0.75) : 0, showTask ? Math.max(rf0 * 3.8, 8) : 0];
+      const SHORT = { fto: 'FTO', '333oh': 'OH', pyram: 'Pyra', sq1: 'SQ1', minx: 'Mega', '333bf': '3BLD', '444bf': '4BLD', '555bf': '5BLD', '333mbf': 'MBLD', '333fm': 'FMC' };
+      // With times, stages or stations a narrow table can leave the event column less than its heading (110% wide,
+      // 0.08em apart) and the short event names need. The text, the icons and the columns then shrink together.
+      const evNeed = Math.max(rowH * 0.6 + rf0 * (hasStage && !hasTime ? 1.55 : 0.5) + rf0 * 0.85 * Math.max(...backRows.map((r) => tw(SHORT[r.ev] || EVN[r.ev] || r.ev, W600))),
+        (tw(en ? 'EVENT' : 'BRANŞ', W800) * 1.1 + 0.4) * hTr0);
+      const k = hasTime || hasStage || hasStation ? Math.min(1, gw / (fixed.reduce((a, b) => a + b, 0) + evNeed)) : 1;
+      const [colTime, colGrp, colStn, colTask] = fixed.map((x) => x * k);
+      const rf = rf0 * k;
+      const iconR = rowH * 0.6 * k;
       const cols = (hasTime ? mm(colTime) + ' ' : '') + 'minmax(0, 1fr) ' + mm(colGrp) + (hasStation ? ' ' + mm(colStn) : '') + (showTask ? ' ' + mm(colTask) : '');
-      const hTr = clamp(rf * 0.72, 1.6, 2.9);
+      const hTr = hTr0 * k;
 
       g.content = { flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: sideRow ? 'row' : 'column' };
       g.tcol = { flex: '1 1 auto', minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' };
@@ -465,7 +473,6 @@ class Component extends DCLogic {
       const evW = gw - colTime - colGrp - colStn - (showTask ? colTask : 0) - iconR - rf * 0.5 - (hasStage && !hasTime ? rf * 1.05 : 0);
       const fitLabel = (t) => (tw(t, W600) * rf <= evW ? evText : Object.assign({}, evText, { fontSize: mm(evW / tw(t, W600)) }));
       // In a narrow table a long name that would drop below three quarters of the row text uses its short form.
-      const SHORT = { fto: 'FTO', '333oh': 'OH', pyram: 'Pyra', sq1: 'SQ1', minx: 'Mega', '333bf': '3BLD', '444bf': '4BLD', '555bf': '5BLD', '333mbf': 'MBLD', '333fm': 'FMC' };
       const labelOf = (e) => { const t = EVN[e] || e; return SHORT[e] && tw(t, W600) * rf * 0.75 > evW ? SHORT[e] : t; };
       const cSt = { textAlign: 'center', fontWeight: 800, fontSize: mm(rf * 1.12) };
       // The time cell with its stage dot, and the day headings.
