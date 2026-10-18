@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCTR Kit</title>
+<meta name="description" content="Speedcubing Türkiye yarışma hazırlık aracı: yaka kartı, derece belgesi ve skor kartı.">
+</head>
+<body>
+<header class="band">
+  <div class="wrap">
+    <div class="brand">
+      <h1>SCTR Kit</h1>
+      <p data-t="tagline">Yarışma hazırlık aracı</p>
+    </div>
+    <div class="langs">
+      <button type="button" data-lang="tr" aria-pressed="true">TR</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+    </div>
+  </div>
+</header>
+<main>
+  <div class="wrap">
+    <form id="form">
+      <label for="comp" data-t="compLabel">WCA yarışma kimliği</label>
+      <div class="row">
+        <input type="text" id="comp" name="comp" placeholder="NewAgeTurkey2026" autocomplete="off" spellcheck="false">
+        <button type="submit" class="go" data-t="load">Yükle</button>
+      </div>
+      <p class="hint" data-t="compHint">Yarışmanın WCA sayfasının adresindeki kimlik.</p>
+      <label class="file"><span data-t="orFile">ya da WCIF dosyası seç</span> <input type="file" id="file" accept=".json,application/json"></label>
+      <p class="status" id="status" role="status"></p>
+    </form>
+    <section id="out" aria-live="polite"></section>
+  </div>
+</main>
+<footer>
+  <div class="wrap">
+    <p data-t="privacy">Veriler yalnızca bu tarayıcıda işlenir.</p>
+    <p><span data-t="credit">Badgifier’dan türetilmiştir.</span> Speedcubing Türkiye</p>
+  </div>
+</footer>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
