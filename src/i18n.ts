@@ -119,7 +119,7 @@ export const EVENTS: Record<string, [string, string, string]> = {
   '444bf': ['4BLD', '4x4x4 Gözü Kapalı', '4x4x4 Blindfolded'],
   '555bf': ['5BLD', '5x5x5 Gözü Kapalı', '5x5x5 Blindfolded'],
   '333mbf': ['MBLD', '3x3x3 Çoklu Gözü Kapalı', '3x3x3 Multi-Blind'],
-  fto: ['FTO', 'FTO', 'FTO'],
+  fto: ['FTO', 'Face Turning Octahedron', 'Face Turning Octahedron'],
 };
 
 export function countryName(code: string, locale: string): string {
