@@ -28,8 +28,23 @@ export const TEXT = {
     group: 'G{n}',
     station: 'M{n}',
     privacy: 'Veriler yalnızca bu tarayıcıda işlenir ve hiçbir sunucuya gönderilmez. Özel WCIF dosyasındaki doğum tarihi ve e-posta yüklenir yüklenmez silinir.',
-    credit: 'Badgifier’dan (MIT, Dallas McNeil) türetilmiştir.',
+    credit: 'Badgifier’dan (MIT, Dallas McNeil) türetilmiştir. Branş ikonları cubing/icons’tan, bayraklar country-flag-icons’tan alınmıştır.',
+    licences: 'Lisanslar',
     roles: { delegate: 'Delege', 'trainee-delegate': 'Aday delege', organizer: 'Organizatör', staff: 'Görevli', competitor: 'Yarışmacı' },
+    viewPeople: 'Kişiler',
+    viewBadges: 'Yaka kartları',
+    design: 'Tasarım',
+    size: 'Boyut',
+    orientation: 'Yön',
+    portrait: 'Dikey',
+    landscape: 'Yatay',
+    cardLang: 'Kart dili',
+    cardEn: 'İngilizce',
+    cardTrEn: 'Türkçe + İngilizce',
+    print: 'Yazdır / PDF',
+    printNote: 'Her kartın ön ve arka yüzü ayrı sayfadır; her kenarda 3 mm taşma payı vardır. Yazdırma penceresinde hedef olarak “PDF olarak kaydet”i seçin.',
+    qrNote: 'Arka yüzdeki QR: {url}',
+    qrWcaLive: 'Bu bağlantı, delege yarışmayı WCA Live’a aktardıktan sonra çalışır.',
   },
   en: {
     tagline: 'Competition prep kit',
@@ -56,8 +71,23 @@ export const TEXT = {
     group: 'G{n}',
     station: 'S{n}',
     privacy: 'Data is processed only in this browser and is never sent to a server. Birth dates and e-mails in a private WCIF are deleted as soon as it loads.',
-    credit: 'Derived from Badgifier (MIT, Dallas McNeil).',
+    credit: 'Derived from Badgifier (MIT, Dallas McNeil). Event icons from cubing/icons, flags from country-flag-icons.',
+    licences: 'Licences',
     roles: { delegate: 'Delegate', 'trainee-delegate': 'Trainee delegate', organizer: 'Organizer', staff: 'Staff', competitor: 'Competitor' },
+    viewPeople: 'People',
+    viewBadges: 'Badges',
+    design: 'Design',
+    size: 'Size',
+    orientation: 'Orientation',
+    portrait: 'Portrait',
+    landscape: 'Landscape',
+    cardLang: 'Badge language',
+    cardEn: 'English',
+    cardTrEn: 'Turkish + English',
+    print: 'Print / PDF',
+    printNote: 'Each badge prints its front and back on separate pages, with 3 mm bleed on every edge. In the print dialog, choose “Save as PDF” as the destination.',
+    qrNote: 'QR on the back: {url}',
+    qrWcaLive: 'This link works once the delegate has imported the competition into WCA Live.',
   },
 } as const;
 
@@ -85,6 +115,14 @@ export const EVENTS: Record<string, [string, string, string]> = {
   '333mbf': ['MBLD', '3x3x3 Çoklu Gözü Kapalı', '3x3x3 Multi-Blind'],
   fto: ['FTO', 'FTO', 'FTO'],
 };
+
+export function countryName(code: string, locale: string): string {
+  try {
+    return new Intl.DisplayNames([locale], { type: 'region' }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
 
 export function fill(s: string, values: Record<string, string | number>): string {
   return s.replace(/\{(\w+)\}/g, (_, k: string) => String(values[k] ?? ''));

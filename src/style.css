@@ -1,5 +1,26 @@
-/* SCTR Kit: the badge family's palette (red #e30a17, ink #1a1a1a, light #f4f4f2), square corners, 1px rules.
-   Archivo is used when installed; it is not bundled yet. */
+/* SCTR Kit: the badge family's palette (red #e30a17, ink #1a1a1a, light #f4f4f2), square corners, 1px rules. */
+
+/* Archivo (OFL-1.1, @fontsource-variable/archivo): weights 100–900, widths 62–125%, Latin and Latin Extended
+   (Turkish). Declared as "Archivo" because the badge designs ask for that family. */
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  src: url("@fontsource-variable/archivo/files/archivo-latin-ext-standard-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  src: url("@fontsource-variable/archivo/files/archivo-latin-standard-normal.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
   --red: #e30a17;
   --ink: #1a1a1a;
@@ -48,6 +69,35 @@ td.role-organizer, td.role-trainee-delegate { font-weight: 700; }
 .groups { display: flex; flex-wrap: wrap; gap: 4px; }
 .chip { display: inline-block; padding: 2px 6px; background: var(--paper-2); border: 1px solid var(--hair); font-size: 12px; white-space: nowrap; }
 .none { color: var(--ink-2); font-size: 13px; }
+#out { display: grid; gap: 16px; }
+.views { display: flex; flex-wrap: wrap; gap: 6px; }
+.views button { font: 700 14px var(--font); padding: 8px 14px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); cursor: pointer; }
+.views button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+.opts { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; }
+.opts label { display: grid; gap: 4px; font-size: 13px; }
+.opts select { font: 15px var(--font); padding: 8px 10px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); }
+select:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+.notes { display: grid; gap: 4px; }
+.notes p { margin: 0; max-width: 90ch; overflow-wrap: anywhere; }
+.badges { display: flex; flex-wrap: wrap; gap: 24px 32px; }
+.pair { display: flex; flex-wrap: wrap; gap: 10px; zoom: 0.7; }
+.pair > * { box-shadow: 0 0 0 1px var(--hair); }
+@media (max-width: 700px) { .pair { zoom: 0.5; } }
+
+/* Print: the pages are laid out off-screen (the bleed is measured there) and are the only thing printed. */
+#print { position: absolute; left: -100000px; top: 0; }
+.page { position: relative; overflow: hidden; break-after: page; background: #fff; }
+.page:last-child { break-after: auto; }
+.page .card { position: absolute; z-index: 1; left: 3mm; top: 3mm; }
+.page .bleed { position: absolute; z-index: 0; }
+.page, .page * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+@media print {
+  body { margin: 0; background: #fff; }
+  body > :not(#print) { display: none !important; }
+  #print { position: static; }
+}
+
 footer { border-top: 1px solid var(--hair); }
 footer .wrap { padding-block: 18px 28px; font-size: 13px; color: var(--ink-2); display: grid; gap: 6px; }
 footer p { margin: 0; max-width: 90ch; }
+footer a { color: inherit; }

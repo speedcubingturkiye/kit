@@ -9,10 +9,14 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "node --test src/wcif.test.ts"
+    "test": "node --test src/wcif.test.ts src/badge.test.ts"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
     "vite": "^7.3.7"
+  },
+  "dependencies": {
+    "@fontsource-variable/archivo": "^5.3.0",
+    "country-flag-icons": "^1.6.20"
   }
 }

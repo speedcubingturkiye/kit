@@ -55,6 +55,17 @@ export async function fetchPublicWcif(id: string): Promise<Wcif> {
   return parseWcif(await res.text());
 }
 
+// The competition's scoretaking software ('wca_live', 'internal' or 'external'); null when it cannot be read.
+export async function fetchScoretaking(id: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${WCA_API}/competitions/${encodeURIComponent(id.trim())}`);
+    if (!res.ok) return null;
+    return ((await res.json()) as { scoretaking_software?: string }).scoretaking_software ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function parseWcif(text: string): Wcif {
   const w = JSON.parse(text) as Wcif;
   if (!w || !Array.isArray(w.persons) || !w.schedule || !Array.isArray(w.schedule.venues)) throw new Error('not-wcif');
