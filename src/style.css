@@ -97,9 +97,9 @@ select:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
 .step { font: 700 20px/1 var(--font); width: 40px; height: 40px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); cursor: pointer; }
 .step:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
 .count { font-size: 13px; color: var(--ink-2); white-space: nowrap; }
-.pair { display: flex; flex-wrap: wrap; gap: 10px; zoom: 0.85; }
+.pair { display: flex; gap: 10px; width: max-content; }
+.pair.stack { flex-direction: column; }
 .pair > * { box-shadow: 0 0 0 1px var(--hair); }
-@media (max-width: 700px) { .pair { zoom: 0.5; } }
 
 /* Print: the pages are laid out off-screen (the bleed is measured there) and are the only thing printed. */
 #print { position: absolute; left: -100000px; top: 0; }

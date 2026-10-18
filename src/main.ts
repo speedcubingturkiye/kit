@@ -202,6 +202,22 @@ function qrOf(w: Wcif) {
   throw new Error('qr');
 }
 
+// The preview shows a badge pair in a box of fixed height whatever the card size: side by side, or stacked on
+// narrow screens. Prints are real size; this is only the on-screen scale.
+const PREVIEW_H = 420;
+const previewFit = new ResizeObserver((entries) => entries.forEach((e) => fitPreview(e.target as HTMLElement)));
+function fitPreview(preview: HTMLElement) {
+  const pair = preview.firstElementChild as HTMLElement | null;
+  if (!pair) return;
+  const { w, h } = cardSize();
+  const avail = preview.clientWidth;
+  const stack = avail < 600;
+  const gap = 10;
+  const across = stack ? w * PX : 2 * w * PX + gap;
+  pair.classList.toggle('stack', stack);
+  pair.style.zoom = String(Math.min(PREVIEW_H / (h * PX), avail / across));
+}
+
 function cardSize() {
   const [a, b] = SIZES[badge.size];
   return badge.land ? { w: b, h: a } : { w: a, h: b };
@@ -232,6 +248,8 @@ function badgeView(w: Wcif, people: Person[]) {
   const notes = el('div', 'notes');
   const nav = el('div', 'nav');
   const preview = el('div', 'preview');
+  previewFit.disconnect();
+  previewFit.observe(preview);
   const pick = document.createElement('select');
   pick.id = 'preview-pick';
   people.forEach((p, i) => pick.append(new Option(p.registrantId == null ? p.name : `${p.registrantId} · ${p.name}`, String(i))));
@@ -255,6 +273,7 @@ function badgeView(w: Wcif, people: Person[]) {
     const pair = el('div', 'pair');
     pair.append(...cards(w, [people[previewAt]])[0]);
     preview.replaceChildren(pair);
+    fitPreview(preview);
   };
   const arrow = (text: string, label: string, step: number) => {
     const b = el('button', 'step', text);
