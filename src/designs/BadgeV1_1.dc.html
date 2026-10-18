@@ -349,8 +349,8 @@ class Component extends DCLogic {
         const numSize = Math.min(fit(idStr, inner, clamp(rW * 0.5, 9, 22), 0.64), (h - bandH) * 0.45);
         const trSize = fit(en ? R.en : R.tr, inner, rW * 0.13, 0.9);
         const enSize = Math.min(trSize * 0.65, fit(R.en, inner, rW * 0.09, 0.78));
-        g.roleBox = { flex: 'none', width: mm(rW), boxSizing: 'border-box', background: R.bg, color: R.fg, borderLeft: R.rule ? '1.2mm solid ' + R.rule : 'none', padding: mm(m * 0.8) + ' ' + mm(Math.max(m * 0.7, 3)), display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'space-between' };
-        g.roleText = { display: 'flex', flexDirection: 'column', gap: mm(enSize * 0.35), minWidth: 0 };
+        g.roleBox = { flex: 'none', width: mm(rW), boxSizing: 'border-box', background: R.bg, color: R.fg, borderLeft: R.rule ? '1.2mm solid ' + R.rule : 'none', padding: mm(m * 0.8) + ' ' + mm(Math.max(m * 0.7, 3)), display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between' };
+        g.roleText = { display: 'flex', flexDirection: 'column', gap: mm(enSize * 0.35), minWidth: 0, alignItems: 'center' };
         g.roleTr = { fontSize: mm(trSize), lineHeight: 1, fontWeight: 800, fontStretch: '115%', letterSpacing: '0.02em', whiteSpace: 'nowrap' };
         g.roleEn = { fontSize: mm(enSize), lineHeight: 1, fontWeight: 600, letterSpacing: '0.1em', whiteSpace: 'nowrap', opacity: 0.85 };
         g.numBox = { alignSelf: 'flex-end', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: mm(0.5) };
@@ -367,7 +367,7 @@ class Component extends DCLogic {
       // English-only: one role line, its baseline pulled to the box edge like the English line it replaces.
       if (en) {
         g.roleEn = Object.assign({}, g.roleEn, { display: 'none' });
-        g.roleTr = Object.assign({}, g.roleTr, { marginBottom: mm(-fs(g.roleTr) * 0.165), marginLeft: mm(-fs(g.roleTr) * lsbOf(R.en)) });
+        g.roleTr = Object.assign({}, g.roleTr, { marginBottom: mm(-fs(g.roleTr) * 0.165), marginLeft: land ? 0 : mm(-fs(g.roleTr) * lsbOf(R.en)) });
       }
       g.numLabel = Object.assign({}, g.numLabel, { marginTop: mm(-fs(g.numLabel) * 0.145) });
       g.num = Object.assign({}, g.num, { marginBottom: mm(-fs(g.num) * 0.115), marginRight: mm(-fs(g.num) * rsbOf(idStr)) });
@@ -471,7 +471,7 @@ class Component extends DCLogic {
         L = Math.min(clamp(qr * 0.5, 6, 12) * 1.1, sideW * 0.44, sideW / HS, (contentH - 2.1 * m - qr - 2.02 * ls - 2.8) / 2);
         sctrW = L * HS;
         sctrH = L;
-        g.logos = { display: 'flex', flexDirection: 'column-reverse', alignItems: 'flex-end', alignSelf: 'flex-end', gap: mm(1.5) };
+        g.logos = { display: 'flex', flexDirection: 'column-reverse', alignItems: 'flex-end', alignSelf: 'flex-end', gap: mm(2.5) };
       } else {
         L = Math.min(clamp(qr * 0.5, 6, 12) * 1.1, (sideW - 1) / 3.6);
         sctrH = L;
