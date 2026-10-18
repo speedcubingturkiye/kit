@@ -391,7 +391,9 @@ class Component extends DCLogic {
       const bottomH = showQR && !sideRow ? qr + ls * 2.4 + m * 0.8 : 0;
       const tableH = contentH - legendH - bottomH - m * 0.8 - m * 0.3 - 1;
       let groups = [rows];
-      if (!showQR && land && rows.length > 5) {
+      // Two tables side by side: on landscape cards without a QR (over 5 events), and on any card whose events
+      // do not fit one table even at the smallest row height (2.8 mm).
+      if ((!showQR && land && rows.length > 5) || (rows.length + (tier >= 2 && !en ? 1.9 : 1.15)) * 2.8 > tableH) {
         const half = Math.ceil(rows.length / 2);
         groups = [rows.slice(0, half), rows.slice(half)];
       }
@@ -422,6 +424,9 @@ class Component extends DCLogic {
       // A label longer than its column (Face Turning Octahedron on small cards) is set smaller to fit.
       const evW = gw - colGrp - colTask - iconR - rf * 0.5;
       const fitLabel = (t) => (tw(t, W600) * rf <= evW ? evText : Object.assign({}, evText, { fontSize: mm(evW / tw(t, W600)) }));
+      // In a narrow table a long name that would drop below three quarters of the row text uses its short form.
+      const SHORT = { fto: 'FTO' };
+      const labelOf = (e) => { const t = EVN[e] || e; return SHORT[e] && tw(t, W600) * rf * 0.75 > evW ? SHORT[e] : t; };
       const cSt = { textAlign: 'center', fontWeight: 800, fontSize: mm(rf * 1.12) };
       g.tGroups = groups.map((list) => ({
         box: { width: mm(gw), flex: 'none', display: 'flex', flexDirection: 'column' },
@@ -436,14 +441,14 @@ class Component extends DCLogic {
         rows: list.map((r) => ({
           row: rowStyle,
           evCell: evCell,
-          evText: fitLabel(EVN[r.ev] || r.ev),
+          evText: fitLabel(labelOf(r.ev)),
           c: cSt,
           t: { textAlign: 'center', fontWeight: r.task === '–' ? 400 : 800, color: r.task === '–' ? '#888888' : '#c4000f' },
           icon: iconSt,
           d: iconOf(r.ev)[0],
           fr: iconOf(r.ev)[1],
           src: iconOf(r.ev)[2] || '',
-          label: EVN[r.ev] || r.ev,
+          label: labelOf(r.ev),
           grp: r.grp,
           task: r.task
         }))
