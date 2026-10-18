@@ -5,6 +5,7 @@ import { badgeComp, badgePerson, liveUrl, sheetGrid, type BadgeLang } from './ba
 import { renderDesign } from './dc.ts';
 import { EVENTS, TASK_LETTER, TEXT, countryName, fill, type Lang } from './i18n.ts';
 import { ICONS } from './icons.ts';
+import { decidingResult, fetchLivePodiums, formatResult, podiumsFromWcif, type Podium } from './podium.ts';
 import { qrPath } from './qr.ts';
 import {
   badgePeople, fetchPublicWcif, fetchScoretaking, indexActivities, parseWcif, roleOf, scheduleOf,
@@ -52,9 +53,14 @@ try { if (localStorage.getItem('kit.lang') === 'en') lang = 'en'; } catch { /* s
 let wcif: Wcif | null = null;
 let scoretaking: string | null = null;
 let previewAt = 0;
+let loadedAt = new Date();
+// Podiums shown in the podium view: from the WCIF as loaded, or refreshed (from WCA Live for competitions scored there).
+let podiums: { list: Podium[]; source: 'wcif' | 'live'; at: Date; note?: keyof typeof TEXT.tr } | null = null;
 // The view and the badge options live in the address, so a link or a reload keeps them.
 const query = new URLSearchParams(location.search);
-let view: 'people' | 'badges' = query.get('v') === 'badges' ? 'badges' : 'people';
+type View = 'people' | 'badges' | 'podiums';
+const VIEWS: View[] = ['people', 'badges', 'podiums'];
+let view: View = VIEWS.find((v) => v === query.get('v')) ?? 'people';
 const badge = {
   design: (query.get('d') === 'B' ? 'B' : 'A') as keyof typeof DESIGNS,
   size: (query.get('s') ?? '') in SIZES ? (query.get('s') as string) : '9x12',
@@ -76,6 +82,7 @@ function setStatus(key: keyof typeof TEXT.tr | null, status?: string) {
 function syncUrl() {
   if (!wcif) return;
   const q = new URLSearchParams({ c: wcif.id });
+  if (view === 'podiums') q.set('v', 'podiums');
   if (view === 'badges') {
     q.set('v', 'badges');
     q.set('d', badge.design);
@@ -101,6 +108,8 @@ async function loadById(id: string) {
   try {
     [wcif, scoretaking] = await Promise.all([fetchPublicWcif(id), fetchScoretaking(id)]);
     previewAt = 0;
+    podiums = null;
+    loadedAt = new Date();
     setStatus(null);
     syncUrl();
   } catch (e) {
@@ -117,6 +126,8 @@ async function loadFile(file: File) {
   try {
     wcif = parseWcif(await file.text());
     previewAt = 0;
+    podiums = null;
+    loadedAt = new Date();
     setStatus(null);
     scoretaking = await fetchScoretaking(wcif.id);
   } catch {
@@ -143,14 +154,80 @@ function render() {
     `WCIF ${w.formatVersion}`,
   ].join(' · ')));
   const views = el('div', 'views');
-  for (const v of ['people', 'badges'] as const) {
-    const b = el('button', '', t(v === 'people' ? 'viewPeople' : 'viewBadges'));
+  const label = { people: 'viewPeople', badges: 'viewBadges', podiums: 'viewPodiums' } as const;
+  for (const v of VIEWS) {
+    const b = el('button', '', t(label[v]));
     b.setAttribute('type', 'button');
     b.setAttribute('aria-pressed', String(view === v));
     b.addEventListener('click', () => { view = v; syncUrl(); render(); });
     views.append(b);
   }
-  out.append(head, views, ...(view === 'people' ? [peopleTable(w, people)] : badgeView(w, people)));
+  out.append(head, views, ...(view === 'people' ? [peopleTable(w, people)] : view === 'badges' ? badgeView(w, people) : podiumView(w)));
+}
+
+// Each event's final with its top three. WCA Live competitions are read live from WCA Live (the WCIF trails it until
+// the next sync); for the others the WCIF is current, so a refresh reloads it.
+function podiumView(w: Wcif) {
+  let cur = w;
+  const meta = el('p', 'hint');
+  const list = el('div', 'podiums');
+  const refresh = el('button', 'go', t('refresh'));
+  refresh.setAttribute('type', 'button');
+  const bar = el('div', 'opts');
+  bar.append(refresh, meta);
+  const time = (d: Date) => d.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' });
+  const draw = () => {
+    const shown = podiums?.list ?? podiumsFromWcif(cur);
+    meta.textContent = fill(t(podiums?.source === 'live' ? 'sourceLive' : 'sourceWcif'), { time: time(podiums?.at ?? loadedAt) })
+      + (podiums?.note ? ' ' + t(podiums.note) : '');
+    list.replaceChildren(...(shown.length ? shown.map(podiumCard) : [el('p', 'empty', t('noRounds'))]));
+  };
+  const update = async () => {
+    refresh.setAttribute('disabled', '');
+    const at = new Date();
+    try {
+      if (scoretaking === 'wca_live') {
+        const live = await fetchLivePodiums(cur);
+        podiums = live ? { list: live, source: 'live', at } : { list: podiumsFromWcif(cur), source: 'wcif', at: loadedAt, note: 'liveNotFound' };
+      } else {
+        cur = wcif = await fetchPublicWcif(cur.id);
+        loadedAt = at;
+        podiums = { list: podiumsFromWcif(cur), source: 'wcif', at };
+      }
+    } catch {
+      podiums = { list: podiums?.list ?? podiumsFromWcif(cur), source: podiums?.source ?? 'wcif', at: podiums?.at ?? loadedAt, note: 'refreshError' };
+    }
+    refresh.removeAttribute('disabled');
+    draw();
+  };
+  refresh.addEventListener('click', update);
+  draw();
+  if (scoretaking === 'wca_live' && !podiums) update();
+  return [bar, list];
+}
+
+function podiumCard(p: Podium) {
+  const card = el('section', `podium state-${p.state}`);
+  const ev = EVENTS[p.event];
+  const h = el('h3');
+  h.append(el('span', '', ev ? ev[lang === 'tr' ? 1 : 2] : p.event), el('span', 'state', t(p.state === 'done' ? 'stateDone' : p.state === 'running' ? 'stateRunning' : 'stateWaiting')));
+  card.append(h, el('p', 'round', fill(t('finalRound'), { n: p.round })));
+  if (p.places.length) {
+    const ol = el('ol', 'places');
+    for (const x of p.places) {
+      const { value, kind } = decidingResult(p.format, x);
+      const li = el('li');
+      li.append(
+        el('span', 'place', String(x.place)),
+        el('span', 'who', x.name),
+        el('span', 'result', `${formatResult(value, p.event, kind !== 'single')} ${t(kind === 'single' ? 'kindSingle' : kind === 'mean' ? 'kindMean' : 'kindAverage')}`),
+        el('span', 'country', countryName(x.country, lang)),
+      );
+      ol.append(li);
+    }
+    card.append(ol);
+  }
+  return card;
 }
 
 function peopleTable(w: Wcif, people: Person[]) {

@@ -101,6 +101,21 @@ select:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
 .pair.stack { flex-direction: column; }
 .pair > * { box-shadow: 0 0 0 1px var(--hair); }
 
+/* Podiums: one card per event final. */
+.podiums { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.podium { border: 1px solid var(--hair); padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+.podium h3 { margin: 0; font-size: 17px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.podium .state { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; color: var(--ink-2); white-space: nowrap; }
+.podium.state-running .state { color: var(--red); }
+.podium.state-done .state { color: var(--ink); }
+.podium .round { margin: 0; font-size: 13px; color: var(--ink-2); }
+.places { margin: 4px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.places li { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 0 8px; font-size: 14px; }
+.places .place { font-weight: 800; }
+.places .who { font-weight: 600; overflow-wrap: anywhere; }
+.places .result { grid-column: 3; grid-row: 1; text-align: right; white-space: nowrap; }
+.places .country { grid-column: 2; font-size: 12px; color: var(--ink-2); }
+
 /* Print: the pages are laid out off-screen (the bleed is measured there) and are the only thing printed. */
 #print { position: absolute; left: -100000px; top: 0; }
 .page { position: relative; overflow: hidden; break-after: page; background: #fff; }

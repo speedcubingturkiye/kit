@@ -17,6 +17,10 @@ export type Person = {
   email?: string;
 };
 export type Activity = { id: number; activityCode: string; startTime: string; endTime: string; childActivities?: Activity[] };
+// Round results as the WCIF carries them while the competition runs: only entered attempts are listed, and a result
+// without attempts (ranking null) is a competitor who has not competed in the round yet.
+export type Result = { personId: number; ranking: number | null; attempts: { result: number }[]; best: number; average: number };
+export type Round = { id: string; format: string; cutoff?: { numberOfAttempts: number; attemptResult: number } | null; results?: Result[] };
 export type Room = { id: number; name: string; color: string; activities: Activity[] };
 export type Venue = { id: number; name: string; timezone: string; rooms: Room[] };
 export type Wcif = {
@@ -25,7 +29,7 @@ export type Wcif = {
   name: string;
   shortName?: string;
   persons: Person[];
-  events: { id: string }[];
+  events: { id: string; rounds?: Round[] }[];
   schedule: { startDate: string; numberOfDays: number; venues: Venue[] };
 };
 
