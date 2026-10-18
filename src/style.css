@@ -37,9 +37,17 @@ body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.5 va
 .wrap { max-width: 1200px; margin-inline: auto; padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); }
 .band { background: var(--red); color: #fff; }
 .band .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; padding-block: 18px; }
-.brand { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
-.brand h1 { margin: 0; font-size: 26px; font-weight: 800; font-stretch: 115%; letter-spacing: 0.02em; }
-.brand p { margin: 0; font-size: 15px; opacity: 0.9; }
+/* The site's long logo in its inverted (white on red) form, the mark alone on narrow screens, then "Kit". */
+.brand { margin: 0; }
+.brand a { display: flex; align-items: center; gap: 14px; color: #fff; text-decoration: none; }
+.brand img { display: block; height: 32px; width: auto; }
+.brand .logo-mark { display: none; }
+.brand .kit { font-size: 26px; font-weight: 800; font-stretch: 115%; letter-spacing: 0.02em; line-height: 1; padding-left: 14px; border-left: 2px solid rgb(255 255 255 / 0.6); }
+.brand a:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
+@media (max-width: 560px) {
+  .brand .logo-long { display: none; }
+  .brand .logo-mark { display: block; }
+}
 .langs { display: flex; gap: 6px; }
 .langs button { font: 700 13px var(--font); letter-spacing: 0.08em; color: #fff; background: transparent; border: 1px solid #fff; padding: 6px 10px; cursor: pointer; }
 .langs button[aria-pressed="true"] { background: #fff; color: var(--red); }

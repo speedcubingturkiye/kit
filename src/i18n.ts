@@ -4,7 +4,6 @@ export type Lang = 'tr' | 'en';
 
 export const TEXT = {
   tr: {
-    tagline: 'Yarışma hazırlık aracı',
     compLabel: 'WCA yarışma kimliği',
     compHint: 'Yarışmanın WCA sayfasının adresindeki kimlik, örneğin NewAgeTurkey2026.',
     load: 'Yükle',
@@ -47,7 +46,6 @@ export const TEXT = {
     qrWcaLive: 'Bu bağlantı, delege yarışmayı WCA Live’a aktardıktan sonra çalışır.',
   },
   en: {
-    tagline: 'Competition prep kit',
     compLabel: 'WCA competition ID',
     compHint: 'The ID in the address of the competition’s WCA page, for example NewAgeTurkey2026.',
     load: 'Load',
