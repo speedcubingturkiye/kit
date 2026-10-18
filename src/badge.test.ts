@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { badgeComp, badgeLegend, badgePerson, badgeRows, dateRange, liveUrl, sheetGrid } from './badge.ts';
+import { badgeComp, badgeLegend, badgePerson, badgeRows, dateRange, groupList, liveUrl, sheetGrid } from './badge.ts';
 import { EVENTS } from './i18n.ts';
 import { ICONS } from './icons.ts';
 import { qrPath } from './qr.ts';
@@ -79,6 +79,13 @@ test('times and stages are options: before groups the round start, the stage onc
   assert.deepEqual(badgeRows(two.persons[0], two, acts2).map((r) => r.join('|')), ['333|2|–|||||', '222||–|||||', 'pyram||–|||||']);
   assert.deepEqual(badgeRows(two.persons[0], two, acts2, { stages: true }).map((r) => `${r[3]}|${r[5]}`), ['|Red Stage', '|Red Stage', '|Blue Stage']);
   assert.deepEqual(badgeRows(two.persons[0], two, acts2, { times: true }).map((r) => r[5]), ['', '', '']);
+});
+
+test('group lists: in order, three or more in a row as a range', () => {
+  assert.equal(groupList([10, 1, 2, 3, 4, 9]), '1–4,9,10');
+  assert.equal(groupList([6, 5]), '5,6');
+  assert.equal(groupList([3, 3, 1]), '1,3');
+  assert.equal(groupList([2]), '2');
 });
 
 test('letters beyond J, S and R (D delegate, E data entry): the legend adds only those, in the letters\' order', () => {

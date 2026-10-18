@@ -2,7 +2,7 @@ import './style.css';
 import badgeA from './designs/BadgeV1_1.dc.html?dc';
 import badgeB from './designs/BadgeV2_1.dc.html?dc';
 import certDesign from './designs/SertifikaKarma.dc.html?dc';
-import { badgeComp, badgePerson, liveUrl, multiStage, sheetGrid, type BadgeLang } from './badge.ts';
+import { badgeComp, badgePerson, groupList, liveUrl, multiStage, sheetGrid, type BadgeLang } from './badge.ts';
 import { certComp, certificates, signers, type Cert } from './certificate.ts';
 import { renderDesign } from './dc.ts';
 import { EVENTS, TASK_LETTER, TEXT, countryName, fill, type Lang } from './i18n.ts';
@@ -395,7 +395,7 @@ function peopleTable(w: Wcif, people: Person[]) {
       const parts = [`${ev ? ev[0] : r.event}${r.round ? ' R' + r.round : ''}`];
       if (r.group != null) parts.push(fill(t('group'), { n: r.group }) + (r.station != null ? ' ' + fill(t('station'), { n: r.station }) : ''));
       for (const [task, groups] of Object.entries(r.tasks) as [Task, number[]][]) {
-        parts.push(`${TASK_LETTER[task]} ${groups.sort((a, b) => a - b).join(',')}`);
+        parts.push(`${TASK_LETTER[task]} ${groupList(groups)}`);
         used.add(task);
       }
       chip.textContent = parts.join(' · ');

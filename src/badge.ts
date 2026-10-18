@@ -26,16 +26,29 @@ export function multiStage(w: Wcif): boolean {
   return new Set(w.schedule.venues.flatMap((v) => v.rooms.filter((r) => r.activities.length).map((r) => r.name))).size > 1;
 }
 
+// Group numbers in order, three or more in a row as a range: [10, 1, 2, 3, 4, 9] gives '1–4,9,10'.
+export function groupList(groups: number[]): string {
+  const n = [...new Set(groups)].sort((a, b) => a - b);
+  const out: string[] = [];
+  for (let i = 0; i < n.length;) {
+    let j = i;
+    while (j + 1 < n.length && n[j + 1] === n[j] + 1) j++;
+    out.push(j - i >= 2 ? `${n[i]}–${n[j]}` : n.slice(i, j + 1).join(','));
+    i = j + 1;
+  }
+  return out.join(',');
+}
+
 // As Badgifier's options, all off by default: times, stages and stations on the back, events the person only works
 // in left off, and the local name on the front.
 export type BadgeOptions = { times?: boolean; stages?: boolean; stations?: boolean; hideStaffOnly?: boolean; localNames?: boolean };
 
 // One row per event from the first round, in the competition's event order (the front's icons follow it; the back
 // sorts its rows by time itself): the group ('' until groups are assigned, '–' in an event the person does not compete
-// in) and the tasks ('J 1,3' or '–'). With times, also when: the start of the person's earliest group in the round, or
-// the round's start before groups are assigned, as 'HH:MM' with its day in the venue's time zone. With stages, and when
-// the competition uses more than one, where: the stage (room) and its colour. With stations, the competing station
-// ('' when the WCIF has none).
+// in) and the tasks ('J 1,3', 'J 1–4 R 6' or '–'). With times, also when: the start of the person's earliest group in
+// the round, or the round's start before groups are assigned, as 'HH:MM' with its day in the venue's time zone. With
+// stages, and when the competition uses more than one, where: the stage (room) and its colour. With stations, the
+// competing station ('' when the WCIF has none).
 export function badgeRows(
   p: Person, w: Wcif, activities: Map<number, ActivityInfo>,
   { times = false, stages = false, stations = false, hideStaffOnly = false }: BadgeOptions = {},
@@ -56,7 +69,7 @@ export function badgeRows(
     if (!competes && r?.group == null && !tasks.length) continue;
     if (hideStaffOnly && !competes && r?.group == null) continue;
     const group = r?.group != null ? String(r.group) : competes ? '' : '–';
-    const task = tasks.map(([t, groups]) => `${TASK_LETTER[t]} ${[...groups].sort((a, b) => a - b).join(',')}`).join(' ');
+    const task = tasks.map(([t, groups]) => `${TASK_LETTER[t]} ${groupList(groups)}`).join(' ');
     let at = r ? { iso: r.first, tz: r.timezone, room: r.room, color: r.roomColor } : null;
     const round = roundOnes.get(id) ?? [];
     if (!at && round.length) {
