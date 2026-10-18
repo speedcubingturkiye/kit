@@ -1,10 +1,10 @@
 // Badge data from the WCIF, in the shape the badge designs take as props (person, comp, qr).
 
 import { TASK_LETTER, TEXT, countryName } from './i18n.ts';
-import { roleOf, scheduleOf, type ActivityInfo, type Person, type Task, type Wcif } from './wcif.ts';
+import { dayOf, roleOf, scheduleOf, type ActivityInfo, type Person, type Task, type Wcif } from './wcif.ts';
 
 export type BadgeLang = 'en' | 'tr-en';
-export type BadgeRow = [event: string, group: string, task: string];
+export type BadgeRow = [event: string, group: string, task: string, time: string, day: string, stage: string, stageColor: string];
 export type BadgePerson = {
   name: string;
   wcaId: string;
@@ -17,10 +17,23 @@ export type BadgePerson = {
   legend: [letter: string, tr: string, en: string][];
 };
 
-// One row per event, in the competition's order, from the first round: the group ('' until groups are assigned,
-// '–' in an event the person does not compete in) and the tasks, e.g. 'J 1,3' or '–'.
+const clockOf = (iso: string, timezone: string) =>
+  new Intl.DateTimeFormat('en-GB', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso));
+
+// One row per event from the first round: the group ('' until groups are assigned, '–' in an event the person does
+// not compete in), the tasks ('J 1,3' or '–'), and when and where. The time is the start of the person's earliest
+// group in the round, or the round's start before groups are assigned, as 'HH:MM' with its day in the venue's time
+// zone; the stage (room) and its colour are given only when the competition uses more than one. Rows are in time
+// order; rows without a time come last, in the competition's event order.
 export function badgeRows(p: Person, w: Wcif, activities: Map<number, ActivityInfo>): BadgeRow[] {
   const first = scheduleOf(p, activities).filter((r) => r.round === 1);
+  const stages = new Set(w.schedule.venues.flatMap((v) => v.rooms.filter((r) => r.activities.length).map((r) => r.name))).size > 1;
+  const roundOnes = new Map<string, ActivityInfo[]>();
+  for (const a of activities.values()) {
+    if (a.code !== a.parentCode || !a.code.endsWith('-r1')) continue;
+    const e = a.code.split('-')[0];
+    roundOnes.set(e, [...(roundOnes.get(e) ?? []), a]);
+  }
   const rows: BadgeRow[] = [];
   for (const { id } of w.events) {
     const r = first.find((x) => x.event === id);
@@ -29,9 +42,19 @@ export function badgeRows(p: Person, w: Wcif, activities: Map<number, ActivityIn
     if (!competes && r?.group == null && !tasks.length) continue;
     const group = r?.group != null ? String(r.group) : competes ? '' : '–';
     const task = tasks.map(([t, groups]) => `${TASK_LETTER[t]} ${[...groups].sort((a, b) => a - b).join(',')}`).join(' ');
-    rows.push([id, group, task || '–']);
+    let at = r ? { iso: r.first, tz: r.timezone, room: r.room, color: r.roomColor } : null;
+    const round = roundOnes.get(id) ?? [];
+    if (!at && round.length) {
+      const a = round.reduce((x, y) => (y.start < x.start ? y : x));
+      // Before groups are assigned, a round held on several stages at once has no stage yet.
+      const one = new Set(round.map((x) => x.room)).size === 1;
+      at = { iso: a.start, tz: a.timezone, room: one ? a.room : '', color: one ? a.roomColor : '' };
+    }
+    rows.push([id, group, task || '–', at ? clockOf(at.iso, at.tz) : '', at ? dayOf(at.iso, at.tz) : '',
+      stages && at ? at.room : '', stages && at ? at.color : '']);
   }
-  return rows;
+  const key = (x: BadgeRow) => (x[3] ? `${x[4]} ${x[3]}` : '~');
+  return rows.sort((a, b) => key(a).localeCompare(key(b)));
 }
 
 // The task letters on a badge besides J, S and R, which every badge legend explains, as [letter, Turkish, English]

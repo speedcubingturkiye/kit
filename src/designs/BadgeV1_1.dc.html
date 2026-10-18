@@ -90,29 +90,29 @@ body{margin:0}
 <sc-for list="{{ g.tGroups }}" as="tg" hint-placeholder-count="1">
 <div style="{{ tg.box }}">
 <div style="{{ tg.head }}">
-<div style="{{ tg.hEv }}"><span>{{ tg.hEvT }}</span><sc-if value="{{ tg.en }}" hint-placeholder-val="{{ true }}"><span style="{{ tg.hEn }}">EVENT</span></sc-if></div>
+<sc-if value="{{ tg.hasTime }}" hint-placeholder-val="{{ false }}"><div style="{{ tg.hEv }}"><span>{{ tg.hTimeT }}</span><sc-if value="{{ tg.en }}" hint-placeholder-val="{{ true }}"><span style="{{ tg.hEn }}">TIME</span></sc-if></div></sc-if><div style="{{ tg.hEv }}"><span>{{ tg.hEvT }}</span><sc-if value="{{ tg.en }}" hint-placeholder-val="{{ true }}"><span style="{{ tg.hEn }}">EVENT</span></sc-if></div>
 <div style="{{ tg.hC }}"><span>{{ tg.hGrpT }}</span><sc-if value="{{ tg.en }}" hint-placeholder-val="{{ true }}"><span style="{{ tg.hEn }}">GROUP</span></sc-if></div>
 <div style="{{ tg.hC }}"><span>{{ tg.hTaskT }}</span><sc-if value="{{ tg.en }}" hint-placeholder-val="{{ true }}"><span style="{{ tg.hEn }}">TASK</span></sc-if></div>
 </div>
 <sc-for list="{{ tg.rows }}" as="r" hint-placeholder-count="6">
-<div style="{{ r.row }}">
-<div style="{{ r.evCell }}"><sc-if value="{{ r.d }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 500 500" aria-hidden="true" style="{{ r.icon }}"><path d="{{ r.d }}" fill="currentColor" fill-rule="{{ r.fr }}"></path></svg></sc-if><sc-if value="{{ r.src }}" hint-placeholder-val="{{ false }}"><img alt="" src="{{ r.src }}" style="{{ r.icon }}"></sc-if><span style="{{ r.evText }}">{{ r.label }}</span></div>
+<sc-if value="{{ r.isDay }}" hint-placeholder-val="{{ false }}"><div style="{{ r.dayRow }}">{{ r.dayText }}</div></sc-if><sc-if value="{{ r.isRow }}" hint-placeholder-val="{{ true }}"><div style="{{ r.row }}">
+<sc-if value="{{ r.hasTime }}" hint-placeholder-val="{{ false }}"><div style="{{ r.tm }}"><sc-if value="{{ r.hasStage }}" hint-placeholder-val="{{ false }}"><span style="{{ r.dot }}"></span></sc-if>{{ r.time }}</div></sc-if><div style="{{ r.evCell }}"><sc-if value="{{ r.d }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 500 500" aria-hidden="true" style="{{ r.icon }}"><path d="{{ r.d }}" fill="currentColor" fill-rule="{{ r.fr }}"></path></svg></sc-if><sc-if value="{{ r.src }}" hint-placeholder-val="{{ false }}"><img alt="" src="{{ r.src }}" style="{{ r.icon }}"></sc-if><span style="{{ r.evText }}">{{ r.label }}</span></div>
 <div style="{{ r.c }}">{{ r.grp }}</div>
 <div style="{{ r.t }}">{{ r.task }}</div>
-</div>
+</div></sc-if>
 </sc-for>
 </div>
 </sc-for>
 </div>
 <div style="{{ g.legendRow }}">
 <sc-if value="{{ g.legendEn }}" hint-placeholder-val="{{ true }}">
-<span><b style="{{ g.legK }}">J</b>Hakem · Judge</span><span><b style="{{ g.legK }}">S</b>Karıştırıcı · Scrambler</span><span><b style="{{ g.legK }}">R</b>Taşıyıcı · Runner</span><sc-for list="{{ g.legendExtra }}" as="lg" hint-placeholder-count="0"><span><b style="{{ g.legK }}">{{ lg.k }}</b>{{ lg.both }}</span></sc-for>
+<span><b style="{{ g.legK }}">J</b>Hakem · Judge</span><span><b style="{{ g.legK }}">S</b>Karıştırıcı · Scrambler</span><span><b style="{{ g.legK }}">R</b>Taşıyıcı · Runner</span><sc-for list="{{ g.legendExtra }}" as="lg" hint-placeholder-count="0"><span><b style="{{ g.legK }}">{{ lg.k }}</b>{{ lg.both }}</span></sc-for><sc-for list="{{ g.legendStages }}" as="ls" hint-placeholder-count="0"><span><span style="{{ ls.dot }}"></span>{{ ls.name }}</span></sc-for>
 </sc-if>
 <sc-if value="{{ g.legendTr }}" hint-placeholder-val="{{ false }}">
-<span><b style="{{ g.legK }}">J</b>Hakem</span><span><b style="{{ g.legK }}">S</b>Karıştırıcı</span><span><b style="{{ g.legK }}">R</b>Taşıyıcı</span><sc-for list="{{ g.legendExtra }}" as="lg" hint-placeholder-count="0"><span><b style="{{ g.legK }}">{{ lg.k }}</b>{{ lg.tr }}</span></sc-for>
+<span><b style="{{ g.legK }}">J</b>Hakem</span><span><b style="{{ g.legK }}">S</b>Karıştırıcı</span><span><b style="{{ g.legK }}">R</b>Taşıyıcı</span><sc-for list="{{ g.legendExtra }}" as="lg" hint-placeholder-count="0"><span><b style="{{ g.legK }}">{{ lg.k }}</b>{{ lg.tr }}</span></sc-for><sc-for list="{{ g.legendStages }}" as="ls" hint-placeholder-count="0"><span><span style="{{ ls.dot }}"></span>{{ ls.name }}</span></sc-for>
 </sc-if>
 <sc-if value="{{ g.legendEnOnly }}" hint-placeholder-val="{{ false }}">
-<span><b style="{{ g.legK }}">J</b>Judge</span><span><b style="{{ g.legK }}">S</b>Scrambler</span><span><b style="{{ g.legK }}">R</b>Runner</span><sc-for list="{{ g.legendExtra }}" as="lg" hint-placeholder-count="0"><span><b style="{{ g.legK }}">{{ lg.k }}</b>{{ lg.en }}</span></sc-for>
+<span><b style="{{ g.legK }}">J</b>Judge</span><span><b style="{{ g.legK }}">S</b>Scrambler</span><span><b style="{{ g.legK }}">R</b>Runner</span><sc-for list="{{ g.legendExtra }}" as="lg" hint-placeholder-count="0"><span><b style="{{ g.legK }}">{{ lg.k }}</b>{{ lg.en }}</span></sc-for><sc-for list="{{ g.legendStages }}" as="ls" hint-placeholder-count="0"><span><span style="{{ ls.dot }}"></span>{{ ls.name }}</span></sc-for>
 </sc-if>
 </div>
 </div>
@@ -206,7 +206,15 @@ class Component extends DCLogic {
     const given = parts.length > 1 ? parts.slice(0, -1).join(' ') : latin;
     const idStr = String(P.id);
     const hasId = !!P.wcaId;
-    const rows = P.rows.map((r) => ({ ev: r[0], grp: r[1], task: r[2] }));
+    const rows = P.rows.map((r) => ({ ev: r[0], grp: r[1], task: r[2], time: r[3] || '', day: r[4] || '', stage: r[5] || '', stageColor: r[6] || '' }));
+    // When and where (props.person.rows[3..6] from the kit: time, day, stage and its colour). The time column shows
+    // when any row has a time, a stage dot before the time when any row has a stage (the legend names the stages),
+    // and day headings when the rows span days.
+    const hasTime = rows.some((r) => r.time);
+    const hasStage = rows.some((r) => r.stage);
+    const multiDay = new Set(rows.filter((r) => r.day).map((r) => r.day)).size > 1;
+    const legendStages = [];
+    rows.forEach((r) => { if (r.stage && !legendStages.some((x) => x.name === r.stage)) legendStages.push({ name: r.stage, color: r.stageColor }); });
     // Task letters other than J, S and R that this badge uses (props.person.legend: letter, Turkish, English); the
     // legend adds them after the three it always explains.
     const legendExtra = (P.legend || []).map((x) => ({ k: x[0], tr: x[1], en: x[2], both: x[1] + ' · ' + x[2] }));
@@ -392,18 +400,28 @@ class Component extends DCLogic {
       const qr = land ? Math.min(clamp(s * 0.26, 14, 24), rW - 1.4 * m) : clamp(s * 0.19, 13, 21);
       const padR = sideRow ? m * 0.7 : m;
       const tableW = (sideRow ? w - rW : w) - m - padR;
-      const legendChars = (en ? 30 : showQR ? 62 : 33) + legendExtra.reduce((n, x) => n + 3 + (en ? x.en : showQR ? x.both : x.tr).length, 0);
+      const legendChars = (en ? 30 : showQR ? 62 : 33) + legendExtra.reduce((n, x) => n + 3 + (en ? x.en : showQR ? x.both : x.tr).length, 0) + legendStages.reduce((n, x) => n + 3 + x.name.length, 0);
       const lsFit = Math.max(1.6, Math.min(ls, (tableW * 1.9) / (legendChars * 0.55)));
       const legendLines = Math.ceil((legendChars * 0.55 * lsFit) / tableW);
       const legendH = legendLines * lsFit * 1.25 + (legendLines - 1) * 0.6 + (showQR && !sideRow ? m * 0.4 : m * 0.7);
       const bottomH = showQR && !sideRow ? qr + ls * 2.4 + m * 0.8 : 0;
       const tableH = contentH - legendH - bottomH - m * 0.8 - m * 0.3 - 1;
-      let groups = [rows];
+      // The table's lines: the rows, with a day heading before each day's first row when the rows span days.
+      const items = [];
+      rows.forEach((r) => {
+        if (multiDay && r.day && (!items.length || items[items.length - 1].day !== r.day)) items.push({ day: r.day, heading: true });
+        items.push(r);
+      });
+      let groups = [items];
       // Two tables side by side: on landscape cards without a QR (over 5 events), and on any card whose events
       // do not fit one table even at the smallest row height (2.8 mm).
-      if ((!showQR && land && rows.length > 5) || (rows.length + (tier >= 2 && !en ? 1.9 : 1.15)) * 2.8 > tableH) {
-        const half = Math.ceil(rows.length / 2);
-        groups = [rows.slice(0, half), rows.slice(half)];
+      if ((!showQR && land && items.length > 5) || (items.length + (tier >= 2 && !en ? 1.9 : 1.15)) * 2.8 > tableH) {
+        let half = Math.ceil(items.length / 2);
+        // A day heading does not end a column, and the second column repeats the day it starts in.
+        if (items[half - 1].heading) half -= 1;
+        const second = items.slice(half);
+        if (multiDay && second.length && !second[0].heading && second[0].day) second.unshift({ day: second[0].day, heading: true });
+        groups = [items.slice(0, half), second];
       }
       const gc = groups.length;
       const gw = (tableW - (gc - 1) * 3) / gc;
@@ -415,7 +433,8 @@ class Component extends DCLogic {
       const iconR = rowH * 0.6;
       const colGrp = Math.max(rf * 3.4, 7) * (en ? 1.12 : 1);
       const colTask = Math.max(rf * 3.8, 8);
-      const cols = 'minmax(0, 1fr) ' + mm(colGrp) + ' ' + mm(colTask);
+      const colTime = hasTime ? Math.max(rf * 3.3, 7.5) + (hasStage ? rf * 1.05 : 0) : 0;
+      const cols = (hasTime ? mm(colTime) + ' ' : '') + 'minmax(0, 1fr) ' + mm(colGrp) + ' ' + mm(colTask);
       const hTr = clamp(rf * 0.72, 1.6, 2.9);
 
       g.content = { flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: sideRow ? 'row' : 'column' };
@@ -430,12 +449,19 @@ class Component extends DCLogic {
       const iconSt = { display: 'block', flex: 'none', width: mm(iconR), height: mm(iconR), color: '#1a1a1a' };
       const evText = { fontWeight: 600 };
       // A label longer than its column (Face Turning Octahedron on small cards) is set smaller to fit.
-      const evW = gw - colGrp - colTask - iconR - rf * 0.5;
+      const evW = gw - colTime - colGrp - colTask - iconR - rf * 0.5;
       const fitLabel = (t) => (tw(t, W600) * rf <= evW ? evText : Object.assign({}, evText, { fontSize: mm(evW / tw(t, W600)) }));
       // In a narrow table a long name that would drop below three quarters of the row text uses its short form.
       const SHORT = { fto: 'FTO' };
       const labelOf = (e) => { const t = EVN[e] || e; return SHORT[e] && tw(t, W600) * rf * 0.75 > evW ? SHORT[e] : t; };
       const cSt = { textAlign: 'center', fontWeight: 800, fontSize: mm(rf * 1.12) };
+      // The time cell with its stage dot, and the day headings.
+      const tmStyle = { display: 'flex', alignItems: 'center', gap: mm(rf * 0.35), fontWeight: 700, fontSize: mm(rf), whiteSpace: 'nowrap' };
+      const dotStyle = { flex: 'none', width: mm(rf * 0.7), height: mm(rf * 0.7), borderRadius: '50%' };
+      const dayRowStyle = { display: 'flex', alignItems: 'flex-end', height: mm(rowH), boxSizing: 'border-box', paddingBottom: mm(rowH * 0.14), borderBottom: '0.25mm solid #e2e2e0', fontSize: mm(hTr), lineHeight: 1, fontWeight: 700, letterSpacing: '0.08em', color: '#555555', whiteSpace: 'nowrap' };
+      const DAYS_TR = ['PAZAR', 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ'];
+      const DAYS_EN = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+      const dayLabel = (d) => { const k = new Date(d + 'T12:00:00Z').getUTCDay(); return en ? DAYS_EN[k] : showEn ? DAYS_TR[k] + ' · ' + DAYS_EN[k] : DAYS_TR[k]; };
       g.tGroups = groups.map((list) => ({
         box: { width: mm(gw), flex: 'none', display: 'flex', flexDirection: 'column' },
         head: headStyle,
@@ -446,7 +472,19 @@ class Component extends DCLogic {
         hEvT: en ? 'EVENT' : 'BRANŞ',
         hGrpT: en ? 'GROUP' : 'GRUP',
         hTaskT: en ? 'TASK' : 'GÖREV',
-        rows: list.map((r) => ({
+        hasTime: hasTime,
+        hTimeT: en ? 'TIME' : 'SAAT',
+        rows: list.map((r) => (r.heading ? {
+          isDay: true,
+          dayRow: dayRowStyle,
+          dayText: dayLabel(r.day)
+        } : {
+          isRow: true,
+          hasTime: hasTime,
+          hasStage: hasStage,
+          tm: tmStyle,
+          time: r.time,
+          dot: Object.assign({}, dotStyle, { background: r.stageColor || 'transparent' }),
           row: rowStyle,
           evCell: evCell,
           evText: fitLabel(labelOf(r.ev)),
@@ -466,6 +504,7 @@ class Component extends DCLogic {
       g.legendTr = !showEn && !en;
       g.legendEnOnly = en;
       g.legendExtra = legendExtra;
+      g.legendStages = legendStages.map((x) => ({ name: x.name, dot: { display: 'inline-block', width: mm(lsFit * 0.75), height: mm(lsFit * 0.75), borderRadius: '50%', marginRight: mm(lsFit * 0.45), background: x.color } }));
       g.legendRow = { flex: 'none', boxSizing: 'border-box', padding: '0 ' + mm(padR) + ' ' + mm(showQR && !sideRow ? m * 0.4 : m * 0.7) + ' ' + mm(m), display: 'flex', flexWrap: 'wrap', gap: mm(0.6) + ' ' + mm(2.4), fontSize: mm(lsFit), lineHeight: 1.25 };
       g.legK = { display: 'inline-block', marginRight: mm(lsFit * 0.45), fontWeight: 800, color: '#c4000f' };
 
