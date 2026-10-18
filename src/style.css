@@ -33,6 +33,7 @@
   color-scheme: light;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.5 var(--font); font-variant-numeric: tabular-nums; }
 .wrap { max-width: 1200px; margin-inline: auto; padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); }
 .band { background: var(--red); color: #fff; }
@@ -101,7 +102,8 @@ select:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
 .pair.stack { flex-direction: column; }
 .pair > * { box-shadow: 0 0 0 1px var(--hair); }
 
-/* Podiums: one card per event final. */
+/* Finals below the certificates: one card per event final. */
+.finals { margin: 8px 0 0; font-size: 17px; }
 .podiums { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
 .podium { border: 1px solid var(--hair); padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
 .podium h3 { margin: 0; font-size: 17px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }

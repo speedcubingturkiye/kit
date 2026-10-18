@@ -56,11 +56,11 @@ export function badgeComp(w: Wcif, lang: BadgeLang) {
 }
 
 // '14 NOV', '14 - 15 NOV', '31 OCT - 1 NOV'; in Turkish with full month names, '31 EKİM - 1 KASIM'. No year: the
-// competition name carries it.
-export function dateRange(start: string, days: number, locale: 'en' | 'tr'): string {
+// competition name carries it. The certificates spell English months in full too ('31 OCTOBER - 1 NOVEMBER').
+export function dateRange(start: string, days: number, locale: 'en' | 'tr', months: 'short' | 'long' = locale === 'en' ? 'short' : 'long'): string {
   const first = new Date(`${start}T00:00:00Z`);
   const last = new Date(first.getTime() + (Math.max(days, 1) - 1) * 86_400_000);
-  const fmt = new Intl.DateTimeFormat(locale, { month: locale === 'en' ? 'short' : 'long', timeZone: 'UTC' });
+  const fmt = new Intl.DateTimeFormat(locale, { month: months, timeZone: 'UTC' });
   const month = (d: Date) => fmt.format(d).toLocaleUpperCase(locale);
   const a = first.getUTCDate();
   const b = last.getUTCDate();

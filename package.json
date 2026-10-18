@@ -9,7 +9,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "node --test src/wcif.test.ts src/badge.test.ts src/podium.test.ts"
+    "test": "node --test src/wcif.test.ts src/badge.test.ts src/podium.test.ts src/certificate.test.ts"
   },
   "devDependencies": {
     "typescript": "^5.9.3",

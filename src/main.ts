@@ -1,14 +1,16 @@
 import './style.css';
 import badgeA from './designs/BadgeV1_1.dc.html?dc';
 import badgeB from './designs/BadgeV2_1.dc.html?dc';
+import certDesign from './designs/SertifikaKarma.dc.html?dc';
 import { badgeComp, badgePerson, liveUrl, sheetGrid, type BadgeLang } from './badge.ts';
+import { certComp, certificates, signers, type Cert } from './certificate.ts';
 import { renderDesign } from './dc.ts';
 import { EVENTS, TASK_LETTER, TEXT, countryName, fill, type Lang } from './i18n.ts';
 import { ICONS } from './icons.ts';
 import { decidingResult, fetchLivePodiums, formatResult, podiumsFromWcif, type Podium } from './podium.ts';
 import { qrPath } from './qr.ts';
 import {
-  badgePeople, fetchPublicWcif, fetchScoretaking, indexActivities, parseWcif, roleOf, scheduleOf,
+  badgePeople, fetchCompetitionInfo, fetchPublicWcif, indexActivities, parseWcif, roleOf, scheduleOf,
   type Person, type Task, type Wcif,
 } from './wcif.ts';
 
@@ -52,14 +54,18 @@ let lang: Lang = 'tr';
 try { if (localStorage.getItem('kit.lang') === 'en') lang = 'en'; } catch { /* storage blocked: keep Turkish */ }
 let wcif: Wcif | null = null;
 let scoretaking: string | null = null;
+let city = '';
 let previewAt = 0;
+let certAt = 0;
 let loadedAt = new Date();
-// Podiums shown in the podium view: from the WCIF as loaded, or refreshed (from WCA Live for competitions scored there).
+// Podiums for the certificates: from the WCIF as loaded, or refreshed (from WCA Live for competitions scored there).
 let podiums: { list: Podium[]; source: 'wcif' | 'live'; at: Date; note?: keyof typeof TEXT.tr } | null = null;
-// The view and the badge options live in the address, so a link or a reload keeps them.
+// Who signs the certificates, picked per competition; the first delegate and organiser by default.
+let signPick: { delegate: string; organizer: string } | null = null;
+// The view and the badge and certificate options live in the address, so a link or a reload keeps them.
 const query = new URLSearchParams(location.search);
-type View = 'people' | 'badges' | 'podiums';
-const VIEWS: View[] = ['people', 'badges', 'podiums'];
+type View = 'people' | 'badges' | 'certificates';
+const VIEWS: View[] = ['people', 'badges', 'certificates'];
 let view: View = VIEWS.find((v) => v === query.get('v')) ?? 'people';
 const badge = {
   design: (query.get('d') === 'B' ? 'B' : 'A') as keyof typeof DESIGNS,
@@ -67,6 +73,12 @@ const badge = {
   land: query.get('o') === 'l',
   lang: (query.get('l') === 'tr-en' ? 'tr-en' : 'en') as BadgeLang,
 };
+// Certificate designs: the outer one draws the page (ground, frame, bands), the inner one writes on it; any of A-E
+// goes with any. event narrows the preview and the print to one event ('' for all).
+const CERT_DESIGNS = ['A', 'B', 'C', 'D', 'E'] as const;
+type CertDesign = (typeof CERT_DESIGNS)[number];
+const certDesignOf = (v: string | null, d: CertDesign) => CERT_DESIGNS.find((k) => k === v) ?? d;
+const certOpts = { outer: certDesignOf(query.get('out'), 'C'), inner: certDesignOf(query.get('in'), 'B'), event: query.get('ev') ?? '' };
 let statusKey: { key: keyof typeof TEXT.tr; status?: string } | null = null;
 const pageStyle = document.head.appendChild(document.createElement('style'));
 
@@ -82,7 +94,12 @@ function setStatus(key: keyof typeof TEXT.tr | null, status?: string) {
 function syncUrl() {
   if (!wcif) return;
   const q = new URLSearchParams({ c: wcif.id });
-  if (view === 'podiums') q.set('v', 'podiums');
+  if (view === 'certificates') {
+    q.set('v', 'certificates');
+    q.set('out', certOpts.outer);
+    q.set('in', certOpts.inner);
+    if (certOpts.event) q.set('ev', certOpts.event);
+  }
   if (view === 'badges') {
     q.set('v', 'badges');
     q.set('d', badge.design);
@@ -106,9 +123,13 @@ async function loadById(id: string) {
   if (!id.trim()) return;
   setStatus('loading');
   try {
-    [wcif, scoretaking] = await Promise.all([fetchPublicWcif(id), fetchScoretaking(id)]);
+    const [w, info] = await Promise.all([fetchPublicWcif(id), fetchCompetitionInfo(id)]);
+    wcif = w;
+    ({ scoretaking, city } = info);
     previewAt = 0;
+    certAt = 0;
     podiums = null;
+    signPick = null;
     loadedAt = new Date();
     setStatus(null);
     syncUrl();
@@ -126,10 +147,12 @@ async function loadFile(file: File) {
   try {
     wcif = parseWcif(await file.text());
     previewAt = 0;
+    certAt = 0;
     podiums = null;
+    signPick = null;
     loadedAt = new Date();
     setStatus(null);
-    scoretaking = await fetchScoretaking(wcif.id);
+    ({ scoretaking, city } = await fetchCompetitionInfo(wcif.id));
   } catch {
     setStatus('badFile');
   }
@@ -154,7 +177,7 @@ function render() {
     `WCIF ${w.formatVersion}`,
   ].join(' · ')));
   const views = el('div', 'views');
-  const label = { people: 'viewPeople', badges: 'viewBadges', podiums: 'viewPodiums' } as const;
+  const label = { people: 'viewPeople', badges: 'viewBadges', certificates: 'viewCertificates' } as const;
   for (const v of VIEWS) {
     const b = el('button', '', t(label[v]));
     b.setAttribute('type', 'button');
@@ -162,26 +185,101 @@ function render() {
     b.addEventListener('click', () => { view = v; syncUrl(); render(); });
     views.append(b);
   }
-  out.append(head, views, ...(view === 'people' ? [peopleTable(w, people)] : view === 'badges' ? badgeView(w, people) : podiumView(w)));
+  out.append(head, views, ...(view === 'people' ? [peopleTable(w, people)] : view === 'badges' ? badgeView(w, people) : certView(w)));
 }
 
-// Each event's final with its top three. WCA Live competitions are read live from WCA Live (the WCIF trails it until
-// the next sync); for the others the WCIF is current, so a refresh reloads it.
-function podiumView(w: Wcif) {
+// Certificates for every place of each finished final, one at a time in the preview; the print button makes them
+// all, or one event's. Below, every final with its state and top three. WCA Live competitions are read live from WCA
+// Live (the WCIF trails it until the next sync); for the others the WCIF is current, so a refresh reloads it.
+function certView(w: Wcif) {
   let cur = w;
+  let certs: Cert[] = [];
   const meta = el('p', 'hint');
   const list = el('div', 'podiums');
   const refresh = el('button', 'go', t('refresh'));
   refresh.setAttribute('type', 'button');
-  const bar = el('div', 'opts');
-  bar.append(refresh, meta);
+  const go = el('button', 'go', t('print'));
+  go.setAttribute('type', 'button');
+  go.addEventListener('click', () => printCertificates(cur, certs));
+  const notes = el('div', 'notes');
+  const nav = el('div', 'nav');
+  const preview = el('div', 'preview');
+  Object.assign(preview.dataset, { w: '297', h: '210', ph: '520' });
+  previewFit.disconnect();
+  previewFit.observe(preview);
+  const pick = document.createElement('select');
+  pick.id = 'preview-pick';
+  const count = el('span', 'count');
+  const events = document.createElement('select');
+  const { delegates, organizers } = signers(w);
+  // One person can be both; the organiser line then defaults to someone else when there is anyone.
+  const signs = (signPick ??= { delegate: delegates[0] ?? '', organizer: organizers.find((n) => n !== delegates[0]) ?? organizers[0] ?? '' });
+  const names = (people: string[]): [string, string][] => [...people.map((n): [string, string] => [n, n]), ['', '—']];
   const time = (d: Date) => d.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' });
-  const draw = () => {
-    const shown = podiums?.list ?? podiumsFromWcif(cur);
+  const evName = (id: string) => EVENTS[id]?.[lang === 'tr' ? 1 : 2] ?? id;
+  const draw = async () => {
+    // In the competition's event order (WCA Live lists its podiums in its own).
+    const order = cur.events.map((e) => e.id);
+    const shown = [...(podiums?.list ?? podiumsFromWcif(cur))].sort((a, b) => order.indexOf(a.event) - order.indexOf(b.event));
     meta.textContent = fill(t(podiums?.source === 'live' ? 'sourceLive' : 'sourceWcif'), { time: time(podiums?.at ?? loadedAt) })
       + (podiums?.note ? ' ' + t(podiums.note) : '');
     list.replaceChildren(...(shown.length ? shown.map(podiumCard) : [el('p', 'empty', t('noRounds'))]));
+    await loadFlags();
+    const all = certificates(shown, certComp(cur, city), [[signs.delegate, 'WCA DELEGATE'], [signs.organizer, 'ORGANIZER']],
+      (c) => (flags?.[c] ? svgUri(flags[c]) : ''), (e) => ICON_URIS[e] ?? '');
+    const done = [...new Set(all.map((c) => c.event))];
+    if (!done.includes(certOpts.event)) certOpts.event = '';
+    syncUrl();
+    events.replaceChildren(new Option(t('allEvents'), ''), ...done.map((e) => new Option(evName(e), e)));
+    events.value = certOpts.event;
+    certs = certOpts.event ? all.filter((c) => c.event === certOpts.event) : all;
+    notes.replaceChildren(
+      el('p', 'out', certs.length ? fill(t('outCerts'), { n: certs.length }) : t('noCerts')),
+      el('p', 'hint', t('printCerts')),
+    );
+    nav.hidden = !certs.length;
+    go.toggleAttribute('disabled', !certs.length);
+    if (!certs.length) {
+      preview.replaceChildren();
+      return;
+    }
+    certAt = Math.min(certAt, certs.length - 1);
+    pick.replaceChildren(...certs.map((c, i) => new Option(`${evName(c.event)} · ${c.place} · ${c.name}`, String(i))));
+    pick.value = String(certAt);
+    count.textContent = `${certAt + 1} / ${certs.length}`;
+    const pair = el('div', 'pair');
+    pair.append(renderDesign(certDesign, { outer: certOpts.outer, inner: certOpts.inner, cert: certs[certAt] }));
+    preview.replaceChildren(pair);
+    fitPreview(preview);
   };
+  const arrow = (text: string, label: string, step: number) => {
+    const b = el('button', 'step', text);
+    b.setAttribute('type', 'button');
+    b.setAttribute('aria-label', label);
+    b.addEventListener('click', () => { certAt = (certAt + step + certs.length) % certs.length; draw(); });
+    return b;
+  };
+  pick.addEventListener('change', () => { certAt = Number(pick.value); draw(); });
+  const pickLabel = el('label', '', t('preview'));
+  pickLabel.setAttribute('for', pick.id);
+  const row = el('div', 'nav-row');
+  row.append(arrow('‹', t('prevCert'), -1), pick, arrow('›', t('nextCert'), 1), count);
+  nav.append(pickLabel, row);
+  const evLabel = el('label');
+  evLabel.append(el('span', '', t('certEvent')), events);
+  events.addEventListener('change', () => { certOpts.event = events.value; certAt = 0; draw(); });
+  const designs = CERT_DESIGNS.map((d): [string, string] => [d, d]);
+  const opts = el('div', 'opts');
+  opts.append(
+    select(t('outer'), designs, certOpts.outer, (v) => { certOpts.outer = certDesignOf(v, 'C'); draw(); }),
+    select(t('inner'), designs, certOpts.inner, (v) => { certOpts.inner = certDesignOf(v, 'B'); draw(); }),
+    evLabel,
+    select(t('signDelegate'), names(delegates), signs.delegate, (v) => { signs.delegate = v; draw(); }),
+    select(t('signOrganizer'), names(organizers), signs.organizer, (v) => { signs.organizer = v; draw(); }),
+    go,
+  );
+  const bar = el('div', 'opts');
+  bar.append(refresh, meta);
   const update = async () => {
     refresh.setAttribute('disabled', '');
     const at = new Date();
@@ -203,7 +301,22 @@ function podiumView(w: Wcif) {
   refresh.addEventListener('click', update);
   draw();
   if (scoretaking === 'wca_live' && !podiums) update();
-  return [bar, list];
+  return [bar, opts, notes, nav, preview, el('h3', 'finals', t('finals')), list];
+}
+
+// A4 landscape, one certificate a page, edge to edge.
+async function printCertificates(w: Wcif, certs: Cert[]) {
+  if (!certs.length) return;
+  pageStyle.textContent = '@page { size: 297mm 210mm; margin: 0; }';
+  $('print').replaceChildren(...certs.map((c) =>
+    page(297, 210, [[renderDesign(certDesign, { outer: certOpts.outer, inner: certOpts.inner, cert: c }), 0, 0]])));
+  await document.fonts.load('800 10px Archivo', 'AaİıŞşĞğ');
+  await document.fonts.ready;
+  // The title becomes the PDF's file name.
+  const title = document.title;
+  document.title = [w.id, lang === 'tr' ? 'derece-belgeleri' : 'certificates', certOpts.outer + certOpts.inner, certOpts.event].filter(Boolean).join('-');
+  window.print();
+  document.title = title;
 }
 
 function podiumCard(p: Podium) {
@@ -279,20 +392,23 @@ function qrOf(w: Wcif) {
   throw new Error('qr');
 }
 
-// The preview shows a badge pair in a box of fixed height whatever the card size: side by side, or stacked on
-// narrow screens. Prints are real size; this is only the on-screen scale.
+// The preview shows a badge pair, or one certificate, in a box of fixed height whatever its size (data-w and data-h
+// in mm, data-ph the height in px): a pair side by side, or stacked on narrow screens. Prints are real size; this is
+// only the on-screen scale.
 const PREVIEW_H = 420;
 const previewFit = new ResizeObserver((entries) => entries.forEach((e) => fitPreview(e.target as HTMLElement)));
 function fitPreview(preview: HTMLElement) {
   const pair = preview.firstElementChild as HTMLElement | null;
   if (!pair) return;
-  const { w, h } = cardSize();
+  const w = Number(preview.dataset.w);
+  const h = Number(preview.dataset.h);
+  const n = pair.childElementCount;
   const avail = preview.clientWidth;
-  const stack = avail < 600;
+  const stack = n > 1 && avail < 600;
   const gap = 10;
-  const across = stack ? w * PX : 2 * w * PX + gap;
+  const across = stack ? w * PX : n * w * PX + (n - 1) * gap;
   pair.classList.toggle('stack', stack);
-  pair.style.zoom = String(Math.min(PREVIEW_H / (h * PX), avail / across));
+  pair.style.zoom = String(Math.min((Number(preview.dataset.ph) || PREVIEW_H) / (h * PX), avail / across));
 }
 
 function cardSize() {
@@ -334,6 +450,7 @@ function badgeView(w: Wcif, people: Person[]) {
   const draw = async () => {
     syncUrl();
     const { w: cw, h: ch } = cardSize();
+    Object.assign(preview.dataset, { w: String(cw), h: String(ch) });
     const grid = sheetGrid(cw, ch);
     notes.replaceChildren(
       el('p', 'out', onSheets()

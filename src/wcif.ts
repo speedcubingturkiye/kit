@@ -59,14 +59,17 @@ export async function fetchPublicWcif(id: string): Promise<Wcif> {
   return parseWcif(await res.text());
 }
 
-// The competition's scoretaking software ('wca_live', 'internal' or 'external'); null when it cannot be read.
-export async function fetchScoretaking(id: string): Promise<string | null> {
+// What the WCIF lacks: the scoretaking software ('wca_live', 'internal' or 'external') and the city, for the
+// certificates. Null and '' when they cannot be read.
+export type CompetitionInfo = { scoretaking: string | null; city: string };
+export async function fetchCompetitionInfo(id: string): Promise<CompetitionInfo> {
   try {
     const res = await fetch(`${WCA_API}/competitions/${encodeURIComponent(id.trim())}`);
-    if (!res.ok) return null;
-    return ((await res.json()) as { scoretaking_software?: string }).scoretaking_software ?? null;
+    if (!res.ok) return { scoretaking: null, city: '' };
+    const c = (await res.json()) as { scoretaking_software?: string; city?: string };
+    return { scoretaking: c.scoretaking_software ?? null, city: c.city ?? '' };
   } catch {
-    return null;
+    return { scoretaking: null, city: '' };
   }
 }
 
