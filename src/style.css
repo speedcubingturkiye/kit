@@ -96,8 +96,11 @@ select:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
 #print { position: absolute; left: -100000px; top: 0; }
 .page { position: relative; overflow: hidden; break-after: page; background: #fff; }
 .page:last-child { break-after: auto; }
-.page .card { position: absolute; z-index: 1; left: 3mm; top: 3mm; }
+.page .card { position: absolute; z-index: 1; }
 .page .bleed { position: absolute; z-index: 0; }
+.page .cut { position: absolute; z-index: 2; }
+.page .cut-v { top: 0; bottom: 0; border-left: 0.25mm dashed #808080; }
+.page .cut-h { left: 0; right: 0; border-top: 0.25mm dashed #808080; }
 .page, .page * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 @media print {
   body { margin: 0; background: #fff; }

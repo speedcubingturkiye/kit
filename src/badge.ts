@@ -68,6 +68,15 @@ export function dateRange(start: string, days: number, locale: 'en' | 'tr'): str
   return month(first) === month(last) ? `${a} - ${b} ${month(last)}` : `${a} ${month(first)} - ${b} ${month(last)}`;
 }
 
+// A4 sheet for badges of w × h mm printed as back-and-front pairs (2w × h): the orientation that holds more pairs,
+// portrait on a tie.
+export function sheetGrid(w: number, h: number) {
+  const fit = (pw: number, ph: number) => ({ pw, ph, cols: Math.floor(pw / (2 * w) + 1e-6), rows: Math.floor(ph / h + 1e-6) });
+  const portrait = fit(210, 297);
+  const landscape = fit(297, 210);
+  return portrait.cols * portrait.rows >= landscape.cols * landscape.rows ? portrait : landscape;
+}
+
 // The back face's QR: the competition's live results. WCA Live's link works once the delegate has imported the
 // competition; the WCA site's own live results need no import. Other software gets the competition page.
 export function liveUrl(id: string, scoretaking: string | null): string {

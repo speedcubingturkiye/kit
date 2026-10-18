@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { badgeComp, badgePerson, badgeRows, dateRange, liveUrl } from './badge.ts';
+import { badgeComp, badgePerson, badgeRows, dateRange, liveUrl, sheetGrid } from './badge.ts';
 import { EVENTS } from './i18n.ts';
 import { ICONS } from './icons.ts';
 import { qrPath } from './qr.ts';
@@ -54,6 +54,14 @@ test('person: registrant number, newcomer, country name, trainee delegate on the
 
 test('every event the kit names has an icon', () => {
   for (const id of Object.keys(EVENTS)) assert.ok(ICONS[id], id);
+});
+
+test('A4 sheets: A6 two people a sheet, A7 four, in either orientation', () => {
+  const grid = (w: number, h: number) => { const g = sheetGrid(w, h); return `${g.pw}x${g.ph} ${g.cols}x${g.rows}`; };
+  assert.equal(grid(105, 148), '210x297 1x2');
+  assert.equal(grid(148, 105), '297x210 1x2');
+  assert.equal(grid(74, 105), '297x210 2x2');
+  assert.equal(grid(105, 74), '210x297 1x4');
 });
 
 test('dates without the year', () => {

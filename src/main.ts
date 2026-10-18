@@ -1,7 +1,7 @@
 import './style.css';
 import badgeA from './designs/BadgeV1_1.dc.html?dc';
 import badgeB from './designs/BadgeV2_1.dc.html?dc';
-import { badgeComp, badgePerson, liveUrl, type BadgeLang } from './badge.ts';
+import { badgeComp, badgePerson, liveUrl, sheetGrid, type BadgeLang } from './badge.ts';
 import { renderDesign } from './dc.ts';
 import { EVENTS, TASK_LETTER, TEXT, countryName, fill, type Lang } from './i18n.ts';
 import { ICONS } from './icons.ts';
@@ -226,8 +226,13 @@ function select(label: string, options: [string, string][], value: string, set: 
 
 function badgeView(w: Wcif, people: Person[]) {
   const grid = el('div', 'badges');
+  const notes = el('div', 'notes');
   const draw = async () => {
     syncUrl();
+    notes.replaceChildren(
+      el('p', 'hint', t(onSheets() ? 'printSheets' : 'printShop')),
+      el('p', 'hint', fill(t('qrNote'), { url: qrOf(w).url }) + (scoretaking === 'wca_live' ? ' ' + t('qrWcaLive') : '')),
+    );
     await loadFlags();
     grid.replaceChildren(...cards(w, people).map((faces) => {
       const pair = el('div', 'pair');
@@ -246,35 +251,76 @@ function badgeView(w: Wcif, people: Person[]) {
   go.setAttribute('type', 'button');
   go.addEventListener('click', () => printBadges(w, people));
   opts.append(go);
-  const notes = el('div', 'notes');
-  notes.append(
-    el('p', 'hint', t('printNote')),
-    el('p', 'hint', fill(t('qrNote'), { url: qrOf(w).url }) + (scoretaking === 'wca_live' ? ' ' + t('qrWcaLive') : '')),
-  );
   draw();
   return [opts, notes, grid];
 }
 
-// One page per face at trim size plus bleed, for the print dialog's "Save as PDF".
+// A6 and A7 go on A4 sheets to print at home; the other sizes go to the print shop as single cards with bleed.
+const onSheets = () => badge.size === 'A6' || badge.size === 'A7';
+
 async function printBadges(w: Wcif, people: Person[]) {
   const { w: cw, h: ch } = cardSize();
   await loadFlags();
-  pageStyle.textContent = `@page { size: ${cw + 2 * BLEED}mm ${ch + 2 * BLEED}mm; margin: 0; }`;
-  const pages = cards(w, people).flat().map((card) => {
-    const page = el('div', 'page');
-    page.style.width = `${cw + 2 * BLEED}mm`;
-    page.style.height = `${ch + 2 * BLEED}mm`;
-    const wrap = el('div', 'card');
-    wrap.append(card);
-    page.append(wrap);
-    return page;
-  });
+  const faces = cards(w, people);
+  const pages = onSheets() ? sheets(faces, cw, ch) : shopPages(faces.flat(), cw, ch);
   $('print').replaceChildren(...pages);
   // The bleed is measured, so Archivo (both subsets) must be in before the layout is read.
   await document.fonts.load('800 10px Archivo', 'AaİıŞşĞğ');
   await document.fonts.ready;
-  for (const page of pages) addBleed(page, cw, ch);
+  if (!onSheets()) for (const page of pages) addBleed(page, cw, ch);
+  // The title becomes the PDF's file name.
+  const title = document.title;
+  document.title = [w.id, lang === 'tr' ? 'yaka-kartlari' : 'badges', badge.design, badge.size].join('-');
   window.print();
+  document.title = title;
+}
+
+function page(width: number, height: number, cards: [HTMLElement, number, number][]) {
+  const p = el('div', 'page');
+  p.style.width = `${width}mm`;
+  p.style.height = `${height}mm`;
+  for (const [card, x, y] of cards) {
+    const wrap = el('div', 'card');
+    wrap.style.left = `${x}mm`;
+    wrap.style.top = `${y}mm`;
+    wrap.append(card);
+    p.append(wrap);
+  }
+  return p;
+}
+
+// Print shop: one page per face at trim size plus bleed.
+function shopPages(cards: HTMLElement[], cw: number, ch: number) {
+  pageStyle.textContent = `@page { size: ${cw + 2 * BLEED}mm ${ch + 2 * BLEED}mm; margin: 0; }`;
+  return cards.map((card) => page(cw + 2 * BLEED, ch + 2 * BLEED, [[card, BLEED, BLEED]]));
+}
+
+// A4 sheets, as in Badgifier: each person's back and front side by side at real size, edge to edge, on whichever
+// A4 orientation holds more people. Cut along the dashed lines, then fold each piece in the middle.
+function sheets(faces: HTMLElement[][], cw: number, ch: number) {
+  const { pw, ph, cols, rows } = sheetGrid(cw, ch);
+  pageStyle.textContent = `@page { size: ${pw}mm ${ph}mm; margin: 0; }`;
+  const cellW = pw / cols;
+  const cellH = ph / rows;
+  const cut = (cls: string, side: 'left' | 'top', mm: number) => {
+    const d = el('div', `cut ${cls}`);
+    d.style[side] = `${mm}mm`;
+    return d;
+  };
+  const out: HTMLElement[] = [];
+  for (let i = 0; i < faces.length; i += cols * rows) {
+    const placed: [HTMLElement, number, number][] = [];
+    faces.slice(i, i + cols * rows).forEach(([front, back], k) => {
+      const x = (k % cols) * cellW + (cellW - 2 * cw) / 2;
+      const y = Math.floor(k / cols) * cellH + (cellH - ch) / 2;
+      placed.push([back, x, y], [front, x + cw, y]);
+    });
+    const sheet = page(pw, ph, placed);
+    for (let c = 1; c < cols; c++) sheet.append(cut('cut-v', 'left', c * cellW));
+    for (let r = 1; r < rows; r++) sheet.append(cut('cut-h', 'top', r * cellH));
+    out.push(sheet);
+  }
+  return out;
 }
 
 // 3 mm bleed: every coloured box that touches a trim edge is extended outward behind the card, and the watermark
