@@ -1,6 +1,6 @@
 // Badge data from the WCIF, in the shape the badge designs take as props (person, comp, qr).
 
-import { TASK_LETTER, countryName } from './i18n.ts';
+import { TASK_LETTER, TEXT, countryName } from './i18n.ts';
 import { roleOf, scheduleOf, type ActivityInfo, type Person, type Task, type Wcif } from './wcif.ts';
 
 export type BadgeLang = 'en' | 'tr-en';
@@ -14,6 +14,7 @@ export type BadgePerson = {
   flag: string;
   role: string;
   rows: BadgeRow[];
+  legend: [letter: string, tr: string, en: string][];
 };
 
 // One row per event, in the competition's order, from the first round: the group ('' until groups are assigned,
@@ -33,9 +34,19 @@ export function badgeRows(p: Person, w: Wcif, activities: Map<number, ActivityIn
   return rows;
 }
 
+// The task letters on a badge besides J, S and R, which every badge legend explains, as [letter, Turkish, English]
+// in the letters' fixed order.
+export function badgeLegend(rows: BadgeRow[]): [string, string, string][] {
+  const used = new Set(rows.flatMap((r) => r[2].split(' ').filter((x) => /^[A-Z]$/.test(x))));
+  return (Object.keys(TASK_LETTER) as Task[])
+    .filter((t) => t !== 'judge' && t !== 'scrambler' && t !== 'runner' && used.has(TASK_LETTER[t]))
+    .map((t) => [TASK_LETTER[t], TEXT.tr.tasks[t], TEXT.en.tasks[t]]);
+}
+
 // flag: an image URI for the country's flag; the designs draw Türkiye's and Italy's themselves.
 export function badgePerson(p: Person, w: Wcif, activities: Map<number, ActivityInfo>, lang: BadgeLang, flag = ''): BadgePerson {
   const role = roleOf(p);
+  const rows = badgeRows(p, w, activities);
   return {
     name: p.name,
     wcaId: p.wcaId ?? '',
@@ -45,7 +56,8 @@ export function badgePerson(p: Person, w: Wcif, activities: Map<number, Activity
     flag,
     // The designs have no trainee band; trainee delegates wear the delegate's.
     role: role === 'trainee-delegate' ? 'delegate' : role,
-    rows: badgeRows(p, w, activities),
+    rows,
+    legend: badgeLegend(rows),
   };
 }
 

@@ -50,3 +50,11 @@ test('schedule: competing group and station, judging group, day in the venue tim
   assert.deepEqual(row.tasks, { judge: [1] });
   assert.equal(row.day, '2026-10-31');
 });
+
+test('staff codes beyond the WCIF five: the tools\' codes by name, breaks left out, unknown codes as other', () => {
+  const w = parseWcif(WCIF);
+  const as = (activityId: number, assignmentCode: string) => ({ activityId, assignmentCode, stationNumber: null });
+  const p = { ...w.persons[1], assignments: [as(11, 'staff-delegate'), as(12, 'staff-stagelead'), as(12, 'staff-break'), as(11, 'staff-wizard')] };
+  assert.deepEqual(scheduleOf(p, indexActivities(w))[0].tasks, { delegate: [1], stagelead: [2], other: [1] });
+  assert.deepEqual(scheduleOf({ ...p, assignments: [as(12, 'staff-lunch')] }, indexActivities(w)), []);
+});

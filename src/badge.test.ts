@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { badgeComp, badgePerson, badgeRows, dateRange, liveUrl, sheetGrid } from './badge.ts';
+import { badgeComp, badgeLegend, badgePerson, badgeRows, dateRange, liveUrl, sheetGrid } from './badge.ts';
 import { EVENTS } from './i18n.ts';
 import { ICONS } from './icons.ts';
 import { qrPath } from './qr.ts';
@@ -36,6 +36,14 @@ test('rows: first-round group and tasks per event; blank group until assigned, d
   assert.deepEqual(badgeRows(w.persons[0], w, acts), [['333', '2', 'J 1'], ['pyram', '', 'J 1 S 1']]);
   assert.deepEqual(badgeRows(w.persons[1], w, acts), [['333', '–', 'J 1,2']]);
   assert.deepEqual(badgeRows(w.persons[2], w, acts), []);
+});
+
+test('letters beyond J, S and R (D delegate, E data entry): the legend adds only those, in the letters\' order', () => {
+  const p = { ...w.persons[1], assignments: [as(11, 'staff-dataentry'), as(12, 'staff-delegate'), as(31, 'staff-judge')] };
+  const rows = badgeRows(p, w, acts);
+  assert.deepEqual(rows, [['333', '–', 'E 1 D 2'], ['pyram', '–', 'J 1']]);
+  assert.deepEqual(badgeLegend(rows), [['D', 'Delege', 'Delegate'], ['E', 'Veri girişi', 'Data entry']]);
+  assert.deepEqual(badgePerson(w.persons[0], w, acts, 'en').legend, []);
 });
 
 test('person: registrant number, newcomer, country name, trainee delegate on the delegate band', () => {

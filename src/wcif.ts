@@ -35,7 +35,9 @@ export type Wcif = {
 
 export type ActivityInfo = { parentCode: string; code: string; start: string; end: string; timezone: string; room: string };
 export type Role = 'delegate' | 'trainee-delegate' | 'organizer' | 'staff' | 'competitor';
-export type Task = 'judge' | 'scrambler' | 'runner' | 'dataentry' | 'announcer' | 'other';
+export type Task =
+  | 'judge' | 'scrambler' | 'runner' | 'delegate' | 'dataentry' | 'announcer' | 'stagelead'
+  | 'showrunner' | 'stream' | 'photo' | 'setupteardown' | 'core' | 'other';
 export type ScheduleRow = {
   day: string;
   parentCode: string;
@@ -128,12 +130,24 @@ export function badgePeople(w: Wcif, newcomersFirst = false): Person[] {
   return people.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name, 'tr'));
 }
 
-const TASKS: Record<string, Task> = {
+// The WCIF's own staff codes and those other tools write (the set Competition Groups shows). Breaks and lunch are not
+// tasks; any other staff code is 'other'.
+const TASKS: Record<string, Task | null> = {
   'staff-judge': 'judge',
   'staff-scrambler': 'scrambler',
   'staff-runner': 'runner',
+  'staff-delegate': 'delegate',
   'staff-dataentry': 'dataentry',
   'staff-announcer': 'announcer',
+  'staff-stagelead': 'stagelead',
+  'staff-showrunner': 'showrunner',
+  'staff-stream': 'stream',
+  'staff-photo': 'photo',
+  'staff-setupteardown': 'setupteardown',
+  'staff-core': 'core',
+  'staff-other': 'other',
+  'staff-break': null,
+  'staff-lunch': null,
 };
 
 export function dayOf(iso: string, timezone: string): string {
@@ -145,7 +159,7 @@ export function scheduleOf(p: Person, activities: Map<number, ActivityInfo>): Sc
   const rows = new Map<string, ScheduleRow>();
   for (const a of p.assignments ?? []) {
     const act = activities.get(a.activityId);
-    if (!act) continue;
+    if (!act || TASKS[a.assignmentCode] === null) continue;
     const [event, round, group] = act.code.split('-');
     let row = rows.get(act.parentCode);
     if (!row) {

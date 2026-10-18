@@ -185,7 +185,7 @@ function render() {
     b.addEventListener('click', () => { view = v; syncUrl(); render(); });
     views.append(b);
   }
-  out.append(head, views, ...(view === 'people' ? [peopleTable(w, people)] : view === 'badges' ? badgeView(w, people) : certView(w)));
+  out.append(head, views, ...(view === 'people' ? peopleTable(w, people) : view === 'badges' ? badgeView(w, people) : certView(w)));
 }
 
 // Certificates for every place of each finished final, one at a time in the preview; the print button makes them
@@ -352,6 +352,7 @@ function peopleTable(w: Wcif, people: Person[]) {
   thead.append(hr);
   const tbody = el('tbody');
   const li = lang === 'tr' ? 1 : 2;
+  const used = new Set<Task>();
   for (const p of people) {
     const tr = el('tr');
     tr.append(el('td', 'num', p.registrantId == null ? '–' : String(p.registrantId)));
@@ -369,7 +370,10 @@ function peopleTable(w: Wcif, people: Person[]) {
       chip.title = ev ? ev[li] : r.event;
       const parts = [`${ev ? ev[0] : r.event}${r.round ? ' R' + r.round : ''}`];
       if (r.group != null) parts.push(fill(t('group'), { n: r.group }) + (r.station != null ? ' ' + fill(t('station'), { n: r.station }) : ''));
-      for (const [task, groups] of Object.entries(r.tasks) as [Task, number[]][]) parts.push(`${TASK_LETTER[task]} ${groups.sort((a, b) => a - b).join(',')}`);
+      for (const [task, groups] of Object.entries(r.tasks) as [Task, number[]][]) {
+        parts.push(`${TASK_LETTER[task]} ${groups.sort((a, b) => a - b).join(',')}`);
+        used.add(task);
+      }
       chip.textContent = parts.join(' · ');
       cell.append(chip);
     }
@@ -379,7 +383,10 @@ function peopleTable(w: Wcif, people: Person[]) {
   table.append(thead, tbody);
   const wrap = el('div', 'table-wrap');
   wrap.append(table);
-  return wrap;
+  // The task letters this competition uses, in the letters' fixed order.
+  const tasks = (Object.keys(TASK_LETTER) as Task[]).filter((k) => used.has(k));
+  if (!tasks.length) return [wrap];
+  return [wrap, el('p', 'hint', `${t('taskLegend')}: ${tasks.map((k) => `${TASK_LETTER[k]} ${TEXT[lang].tasks[k]}`).join(' · ')}`)];
 }
 
 // The live-results link, or the competition page when that link is too long for the badge's QR.

@@ -1,5 +1,7 @@
 // Interface texts and event names in Turkish and English.
 
+import type { Task } from './wcif.ts';
+
 export type Lang = 'tr' | 'en';
 
 export const TEXT = {
@@ -59,6 +61,12 @@ export const TEXT = {
     kindMean: 'ortalama',
     kindSingle: 'en iyi',
     roles: { delegate: 'Delege', 'trainee-delegate': 'Aday delege', organizer: 'Organizatör', staff: 'Görevli', competitor: 'Yarışmacı' },
+    tasks: {
+      judge: 'Hakem', scrambler: 'Karıştırıcı', runner: 'Taşıyıcı', delegate: 'Delege', dataentry: 'Veri girişi', announcer: 'Anons',
+      stagelead: 'Sahne sorumlusu', showrunner: 'Akış sorumlusu', stream: 'Yayın', photo: 'Fotoğraf', setupteardown: 'Kurulum/toplama',
+      core: 'Çekirdek ekip', other: 'Görevli',
+    },
+    taskLegend: 'Görevler',
     viewPeople: 'Kişiler',
     viewBadges: 'Yaka kartları',
     design: 'Tasarım',
@@ -131,6 +139,12 @@ export const TEXT = {
     kindMean: 'mean',
     kindSingle: 'single',
     roles: { delegate: 'Delegate', 'trainee-delegate': 'Trainee delegate', organizer: 'Organizer', staff: 'Staff', competitor: 'Competitor' },
+    tasks: {
+      judge: 'Judge', scrambler: 'Scrambler', runner: 'Runner', delegate: 'Delegate', dataentry: 'Data entry', announcer: 'Announcer',
+      stagelead: 'Stage lead', showrunner: 'Showrunner', stream: 'Livestream', photo: 'Photographer', setupteardown: 'Setup/teardown',
+      core: 'Core staff', other: 'Staff',
+    },
+    taskLegend: 'Tasks',
     viewPeople: 'People',
     viewBadges: 'Badges',
     design: 'Design',
@@ -149,8 +163,13 @@ export const TEXT = {
   },
 } as const;
 
-// Task letters as on the badges: J judge, S scrambler, R runner (same in both languages), plus D data entry, A announcer.
-export const TASK_LETTER = { judge: 'J', scrambler: 'S', runner: 'R', dataentry: 'D', announcer: 'A', other: '?' } as const;
+// Task letters as on the badges, the same in both languages and, where they do not clash, as on Competition Groups:
+// J judge, S scrambler, R runner (the three every badge legend explains), D delegate, E data entry, A announcer,
+// L stage lead, H showrunner, M livestream, P photographer, T setup and teardown, C core staff, O any other task.
+export const TASK_LETTER: Record<Task, string> = {
+  judge: 'J', scrambler: 'S', runner: 'R', delegate: 'D', dataentry: 'E', announcer: 'A', stagelead: 'L',
+  showrunner: 'H', stream: 'M', photo: 'P', setupteardown: 'T', core: 'C', other: 'O',
+};
 
 // Event names: short label, Turkish, English. The Turkish names of events not yet on the designs are proposals.
 export const EVENTS: Record<string, [string, string, string]> = {

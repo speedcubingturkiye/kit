@@ -106,13 +106,13 @@ body{margin:0}
 </div>
 <div style="{{ g.legendRow }}">
 <sc-if value="{{ g.legendEn }}" hint-placeholder-val="{{ true }}">
-<span><b style="{{ g.legK }}">J</b>Hakem · Judge</span><span><b style="{{ g.legK }}">S</b>Karıştırıcı · Scrambler</span><span><b style="{{ g.legK }}">R</b>Taşıyıcı · Runner</span>
+<span><b style="{{ g.legK }}">J</b>Hakem · Judge</span><span><b style="{{ g.legK }}">S</b>Karıştırıcı · Scrambler</span><span><b style="{{ g.legK }}">R</b>Taşıyıcı · Runner</span><sc-for list="{{ g.legendExtra }}" as="lg" hint-placeholder-count="0"><span><b style="{{ g.legK }}">{{ lg.k }}</b>{{ lg.both }}</span></sc-for>
 </sc-if>
 <sc-if value="{{ g.legendTr }}" hint-placeholder-val="{{ false }}">
-<span><b style="{{ g.legK }}">J</b>Hakem</span><span><b style="{{ g.legK }}">S</b>Karıştırıcı</span><span><b style="{{ g.legK }}">R</b>Taşıyıcı</span>
+<span><b style="{{ g.legK }}">J</b>Hakem</span><span><b style="{{ g.legK }}">S</b>Karıştırıcı</span><span><b style="{{ g.legK }}">R</b>Taşıyıcı</span><sc-for list="{{ g.legendExtra }}" as="lg" hint-placeholder-count="0"><span><b style="{{ g.legK }}">{{ lg.k }}</b>{{ lg.tr }}</span></sc-for>
 </sc-if>
 <sc-if value="{{ g.legendEnOnly }}" hint-placeholder-val="{{ false }}">
-<span><b style="{{ g.legK }}">J</b>Judge</span><span><b style="{{ g.legK }}">S</b>Scrambler</span><span><b style="{{ g.legK }}">R</b>Runner</span>
+<span><b style="{{ g.legK }}">J</b>Judge</span><span><b style="{{ g.legK }}">S</b>Scrambler</span><span><b style="{{ g.legK }}">R</b>Runner</span><sc-for list="{{ g.legendExtra }}" as="lg" hint-placeholder-count="0"><span><b style="{{ g.legK }}">{{ lg.k }}</b>{{ lg.en }}</span></sc-for>
 </sc-if>
 </div>
 </div>
@@ -207,6 +207,9 @@ class Component extends DCLogic {
     const idStr = String(P.id);
     const hasId = !!P.wcaId;
     const rows = P.rows.map((r) => ({ ev: r[0], grp: r[1], task: r[2] }));
+    // Task letters other than J, S and R that this badge uses (props.person.legend: letter, Turkish, English); the
+    // legend adds them after the three it always explains.
+    const legendExtra = (P.legend || []).map((x) => ({ k: x[0], tr: x[1], en: x[2], both: x[1] + ' · ' + x[2] }));
     const evs = rows.filter((r) => r.grp !== '–').map((r) => r.ev);
     // Events not drawn here take the kit's icon (props.icons: event id -> image URI), else the 3x3 one.
     const iconOf = (e) => ICON[e] || ((this.props.icons || {})[e] ? ['', 'nonzero', this.props.icons[e]] : ICON['333']);
@@ -389,9 +392,9 @@ class Component extends DCLogic {
       const qr = land ? Math.min(clamp(s * 0.26, 14, 24), rW - 1.4 * m) : clamp(s * 0.19, 13, 21);
       const padR = sideRow ? m * 0.7 : m;
       const tableW = (sideRow ? w - rW : w) - m - padR;
-      const legendChars = en ? 30 : showQR ? 62 : 33;
+      const legendChars = (en ? 30 : showQR ? 62 : 33) + legendExtra.reduce((n, x) => n + 3 + (en ? x.en : showQR ? x.both : x.tr).length, 0);
       const lsFit = Math.max(1.6, Math.min(ls, (tableW * 1.9) / (legendChars * 0.55)));
-      const legendLines = legendChars * 0.55 * lsFit > tableW ? 2 : 1;
+      const legendLines = Math.ceil((legendChars * 0.55 * lsFit) / tableW);
       const legendH = legendLines * lsFit * 1.25 + (legendLines - 1) * 0.6 + (showQR && !sideRow ? m * 0.4 : m * 0.7);
       const bottomH = showQR && !sideRow ? qr + ls * 2.4 + m * 0.8 : 0;
       const tableH = contentH - legendH - bottomH - m * 0.8 - m * 0.3 - 1;
@@ -462,6 +465,7 @@ class Component extends DCLogic {
       g.legendEn = showEn && !en;
       g.legendTr = !showEn && !en;
       g.legendEnOnly = en;
+      g.legendExtra = legendExtra;
       g.legendRow = { flex: 'none', boxSizing: 'border-box', padding: '0 ' + mm(padR) + ' ' + mm(showQR && !sideRow ? m * 0.4 : m * 0.7) + ' ' + mm(m), display: 'flex', flexWrap: 'wrap', gap: mm(0.6) + ' ' + mm(2.4), fontSize: mm(lsFit), lineHeight: 1.25 };
       g.legK = { display: 'inline-block', marginRight: mm(lsFit * 0.45), fontWeight: 800, color: '#c4000f' };
 
