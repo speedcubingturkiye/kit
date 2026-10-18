@@ -442,10 +442,14 @@ class Component extends DCLogic {
       const rowH = Math.max(2.8, Math.min(clamp(s * 0.1, 4.4, 8.6), tableH / (perGroup + headU)));
       const rf0 = rowH * 0.5;
       const hTr0 = clamp(rf0 * 0.72, 1.6, 2.9);
+      // Task lists' widths in em (weight 800; the width tables have no comma or dash).
+      const TW = (s) => Array.from(s).reduce((a, ch) => a + (ch === ',' ? 0.318 : ch === '–' ? 0.5 : W800[ch] != null ? W800[ch] : 0.62), 0);
+      const taskW = Math.max(0, ...backRows.map((r) => (r.task === '–' ? 0 : TW(r.task))));
       // The time, group, station and task columns. The station column is wide enough for the numbers and the
-      // heading (MASA, or STATION on English badges).
+      // heading (MASA, or STATION on English badges); the task column grows for long task lists, up to 30% of the
+      // table.
       const fixed = [hasTime ? Math.max(rf0 * 3.3, 7.5) + (hasStage ? rf0 * 1.05 : 0) : 0, Math.max(rf0 * 3.4, 7) * (en ? 1.12 : 1),
-        hasStation ? Math.max(rf0 * 2.8, (en ? 7.6 : 5.6) * hTr0 * 0.75) : 0, showTask ? Math.max(rf0 * 3.8, 8) : 0];
+        hasStation ? Math.max(rf0 * 2.8, (en ? 7.6 : 5.6) * hTr0 * 0.75) : 0, showTask ? Math.max(rf0 * 3.8, 8, Math.min((taskW + 0.3) * rf0, gw * 0.3)) : 0];
       const SHORT = { fto: 'FTO', '333oh': 'OH', pyram: 'Pyra', sq1: 'SQ1', minx: 'Mega', '333bf': '3BLD', '444bf': '4BLD', '555bf': '5BLD', '333mbf': 'MBLD', '333fm': 'FMC' };
       // With times, stages or stations a narrow table can leave the event column less than its heading (110% wide,
       // 0.08em apart) and the short event names need. The text, the icons and the columns then shrink together.
@@ -475,6 +479,46 @@ class Component extends DCLogic {
       // In a narrow table a long name that would drop below three quarters of the row text uses its short form.
       const labelOf = (e) => { const t = EVN[e] || e; return SHORT[e] && tw(t, W600) * rf * 0.75 > evW ? SHORT[e] : t; };
       const cSt = { textAlign: 'center', fontWeight: 800, fontSize: mm(rf * 1.12) };
+      // A task list too wide for its column goes on more lines, set smaller until they fit the column and the row.
+      // Tasks stay whole unless breaking one after a comma, into lines of even width, makes the text a fifth larger.
+      const taskCell = (task) => {
+        const st = { textAlign: 'center', fontWeight: task === '–' ? 400 : 800, color: task === '–' ? '#888888' : '#c4000f' };
+        const avail = colTask - rf * 0.3;
+        if (TW(task) * rf <= avail) return { t: st, task: task };
+        const parts = task.split(' ');
+        const entries = [];
+        for (let i = 0; i < parts.length; i += 2) entries.push(parts.slice(i, i + 2).join(' '));
+        const layout = (f, split) => {
+          const lines = [];
+          for (const e of entries) {
+            const last = lines[lines.length - 1];
+            if (!split || TW(e) * f <= avail) {
+              if (last && TW(last + ' ' + e) * f <= avail) lines[lines.length - 1] = last + ' ' + e;
+              else lines.push(e);
+              continue;
+            }
+            const chunks = e.split(',').map((x, i, all) => (i < all.length - 1 ? x + ',' : x));
+            const fill = (wd) => chunks.reduce((a, c) => (a.length && TW(a[a.length - 1] + c) * f <= wd ? a.slice(0, -1).concat(a[a.length - 1] + c) : a.concat(c)), []);
+            const n = fill(avail).length;
+            let lo = 0;
+            let hi = avail;
+            for (let i = 0; i < 16; i++) { const mid = (lo + hi) / 2; if (fill(mid).length <= n) hi = mid; else lo = mid; }
+            lines.push(...fill(hi));
+          }
+          return lines;
+        };
+        const fits = (f, lines) => Math.max(...lines.map(TW)) * f <= avail && lines.length * f * 1.05 <= rowH * 0.92;
+        const best = (split) => {
+          let f = rf;
+          let lines = layout(f, split);
+          while (f > rf * 0.45 && !fits(f, lines)) { f *= 0.97; lines = layout(f, split); }
+          return { f: f, lines: lines };
+        };
+        const whole = best(false);
+        const split = best(true);
+        const b = split.f > whole.f * 1.2 ? split : whole;
+        return { t: Object.assign(st, { fontSize: mm(b.f), lineHeight: 1.05, whiteSpace: 'pre' }), task: b.lines.join('\n') };
+      };
       // The time cell with its stage dot, and the day headings.
       const tmStyle = { display: 'flex', alignItems: 'center', gap: mm(rf * 0.35), fontWeight: 700, fontSize: mm(rf), whiteSpace: 'nowrap' };
       const dotStyle = { flex: 'none', width: mm(rf * 0.7), height: mm(rf * 0.7), borderRadius: '50%' };
@@ -516,14 +560,13 @@ class Component extends DCLogic {
           evCell: evCell,
           evText: fitLabel(labelOf(r.ev)),
           c: cSt,
-          t: { textAlign: 'center', fontWeight: r.task === '–' ? 400 : 800, color: r.task === '–' ? '#888888' : '#c4000f' },
+          ...taskCell(r.task),
           icon: iconSt,
           d: iconOf(r.ev)[0],
           fr: iconOf(r.ev)[1],
           src: iconOf(r.ev)[2] || '',
           label: labelOf(r.ev),
-          grp: r.grp,
-          task: r.task
+          grp: r.grp
         }))
       }));
 
