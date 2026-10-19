@@ -10,11 +10,13 @@ export type Podium = { event: string; round: number; format: string; state: Podi
 const ATTEMPTS: Record<string, number> = { a: 5, m: 3, '1': 1, '2': 2, '3': 3, '5': 5 };
 
 // A result is complete with all its attempts, or with the cutoff's attempts when none of them beat the cutoff.
-// Smaller is better for every event, Multi-Blind's encoding included.
+// Smaller is better for every event, Multi-Blind's encoding included. A head-to-head round ('h') has no set number of
+// attempts, so the WCIF cannot tell when it is over: its podium waits for WCA Live or the posted results.
 export function complete(r: Result, round: Round): boolean {
+  if (round.format === 'h') return false;
   const n = r.attempts.length;
   const c = round.cutoff;
-  if (c && n === c.numberOfAttempts && !r.attempts.some((a) => a.result > 0 && a.result < c.attemptResult)) return true;
+  if (c && n === c.numberOfAttempts && !r.attempts.some((a) => a.value > 0 && a.value < c.resultValue)) return true;
   return n >= (ATTEMPTS[round.format] ?? 1);
 }
 

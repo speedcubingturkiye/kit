@@ -19,8 +19,8 @@ export type Person = {
 export type Activity = { id: number; activityCode: string; startTime: string; endTime: string; childActivities?: Activity[] };
 // Round results as the WCIF carries them while the competition runs: only entered attempts are listed, and a result
 // without attempts (ranking null) is a competitor who has not competed in the round yet.
-export type Result = { personId: number; ranking: number | null; attempts: { result: number }[]; best: number; average: number };
-export type Round = { id: string; format: string; cutoff?: { numberOfAttempts: number; attemptResult: number } | null; results?: Result[] };
+export type Result = { personId: number; ranking: number | null; attempts: { value: number }[]; best: number; average: number };
+export type Round = { id: string; format: string; cutoff?: { numberOfAttempts: number; resultValue: number } | null; results?: Result[] };
 export type Room = { id: number; name: string; color: string; activities: Activity[] };
 export type Venue = { id: number; name: string; timezone: string; rooms: Room[] };
 export type Wcif = {
@@ -59,9 +59,9 @@ export type ScheduleRow = {
 
 export const WCA_API = 'https://www.worldcubeassociation.org/api/v0';
 
-// The public WCIF needs no login. A 404 means a wrong ID; other failures are reported with their status.
+// The public WCIF, version 2, needs no login. A 404 means a wrong ID; other failures are reported with their status.
 export async function fetchPublicWcif(id: string): Promise<Wcif> {
-  const res = await fetch(`${WCA_API}/competitions/${encodeURIComponent(id.trim())}/wcif/public`);
+  const res = await fetch(`${WCA_API}/competitions/${encodeURIComponent(id.trim())}/wcif/version/2`);
   if (!res.ok) throw new Error(res.status === 404 ? 'not-found' : `http-${res.status}`);
   return parseWcif(await res.text());
 }
@@ -83,7 +83,22 @@ export async function fetchCompetitionInfo(id: string): Promise<CompetitionInfo>
 export function parseWcif(text: string): Wcif {
   const w = JSON.parse(text) as Wcif;
   if (!w || !Array.isArray(w.persons) || !w.schedule || !Array.isArray(w.schedule.venues)) throw new Error('not-wcif');
+  fromV1(w);
   return minimise(w);
+}
+
+// A file saved from WCIF version 1 names an attempt's value `result` and the cutoff's `attemptResult`; version 2
+// calls them `value` and `resultValue`.
+function fromV1(w: Wcif) {
+  for (const e of w.events ?? []) {
+    for (const r of e.rounds ?? []) {
+      const c = r.cutoff as { resultValue?: number; attemptResult?: number } | null | undefined;
+      if (c && c.resultValue === undefined) c.resultValue = c.attemptResult;
+      for (const x of r.results ?? []) {
+        for (const a of x.attempts as { value?: number; result?: number }[]) if (a.value === undefined) a.value = a.result;
+      }
+    }
+  }
 }
 
 // Only what the documents need stays in memory: a private WCIF's birth dates, e-mails, guests and notes are dropped

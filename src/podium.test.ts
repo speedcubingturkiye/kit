@@ -5,11 +5,11 @@ import { complete, decidingResult, formatResult, podiumFromLive, podiumsFromResu
 import type { Result, Wcif } from './wcif.ts';
 
 const res = (personId: number, ranking: number | null, attempts: number[], best: number, average: number): Result =>
-  ({ personId, ranking, attempts: attempts.map((result) => ({ result })), best, average });
+  ({ personId, ranking, attempts: attempts.map((value) => ({ value })), best, average });
 const person = (registrantId: number, name: string, countryIso2 = 'TR') =>
   ({ registrantId, name, wcaUserId: registrantId, wcaId: null, countryIso2, registration: null });
 const w = {
-  formatVersion: '1.1', id: 'Test2027', name: 'Test 2027', schedule: { startDate: '2027-03-06', numberOfDays: 1, venues: [] },
+  formatVersion: '2.2', id: 'Test2027', name: 'Test 2027', schedule: { startDate: '2027-03-06', numberOfDays: 1, venues: [] },
   persons: [person(1, 'Ada Er'), person(2, 'Bora Su'), person(3, 'Cem Ay', 'GR'), person(4, 'Deniz Ok'), person(5, 'Ece Ün')],
   events: [
     { id: '333', rounds: [{ id: '333-r1', format: 'a', results: [] }, { id: '333-r2', format: 'a', results: [
@@ -22,17 +22,18 @@ const w = {
     { id: 'pyram', rounds: [{ id: 'pyram-r1', format: 'a', results: [res(1, 1, [300, 310, 320, 330, 340], 300, 320), res(2, null, [], 0, 0)] }] },
     { id: '222', rounds: [{ id: '222-r1', format: 'a', results: [res(1, null, [], 0, 0)] }] },
     { id: '333bf', rounds: [{ id: '333bf-r1', format: '3', results: [res(1, 1, [3000, -1, 3500], 3000, -1), res(2, 2, [-1, -1, -1], -1, -1)] }] },
-    { id: 'minx', rounds: [{ id: 'minx-r1', format: 'a', cutoff: { numberOfAttempts: 2, attemptResult: 6000 }, results: [
+    { id: 'minx', rounds: [{ id: 'minx-r1', format: 'a', cutoff: { numberOfAttempts: 2, resultValue: 6000 }, results: [
       res(1, 1, [5000, 5100, 5200, 5300, 5400], 5000, 5200), res(2, 2, [6500, 6600], 6500, 0),
     ] }] },
   ],
 } as unknown as Wcif;
 
-test('complete: all attempts, or the cutoff attempts when none beat it', () => {
-  const round = { id: 'minx-r1', format: 'a', cutoff: { numberOfAttempts: 2, attemptResult: 6000 } };
+test('complete: all attempts, or the cutoff attempts when none beat it; never for head-to-head', () => {
+  const round = { id: 'minx-r1', format: 'a', cutoff: { numberOfAttempts: 2, resultValue: 6000 } };
   assert.equal(complete(res(1, 1, [6500, 6600], 6500, 0), round), true);
   assert.equal(complete(res(1, 1, [5500, 6600], 5500, 0), round), false);
   assert.equal(complete(res(1, 1, [5500, 6600, 5000, 5100, 5200], 5000, 5300), round), true);
+  assert.equal(complete(res(1, 1, [700, 720, 690, 710, 705], 690, 705), { id: '333-r4', format: 'h' }), false);
 });
 
 test('WCIF podiums: final round only, ties share a place, DNF-only is left off, unfinished rounds have none', () => {

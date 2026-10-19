@@ -51,6 +51,15 @@ test('schedule: competing group and station, judging group, day in the venue tim
   assert.equal(row.day, '2026-10-31');
 });
 
+test('a version 1 file reads like version 2: attempt values and the cutoff', () => {
+  const v1 = JSON.parse(WCIF);
+  v1.events = [{ id: '333', rounds: [{ id: '333-r1', format: 'a', cutoff: { numberOfAttempts: 2, attemptResult: 1500 },
+    results: [{ personId: 2, ranking: 1, attempts: [{ result: 1200 }, { result: -1 }], best: 1200, average: 0 }] }] }];
+  const round = parseWcif(JSON.stringify(v1)).events[0].rounds![0];
+  assert.deepEqual(round.results![0].attempts.map((a) => a.value), [1200, -1]);
+  assert.equal(round.cutoff!.resultValue, 1500);
+});
+
 test('staff codes beyond the WCIF five: the tools\' codes by name, breaks left out, unknown codes as other', () => {
   const w = parseWcif(WCIF);
   const as = (activityId: number, assignmentCode: string) => ({ activityId, assignmentCode, stationNumber: null });
