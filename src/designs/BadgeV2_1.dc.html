@@ -193,7 +193,9 @@ class Component extends DCLogic {
     const s = Math.min(w, h);
     const tier = s < 60 ? 1 : (s < 85 ? 2 : 3);
     const m = clamp(s * 0.07, 3.5, 7);
-    const hz = Math.max(clamp(s * 0.09, 6.5, 9.5), s < 85 ? 9 : 0);
+    // The kit can say the card has no punch hole (props.hole false); the top then needs no clear zone.
+    const hole = this.props.hole !== false;
+    const hz = hole ? Math.max(clamp(s * 0.09, 6.5, 9.5), s < 85 ? 9 : 0) : m * 0.8;
     const rW = clamp(w * 0.28, 22, 40);
     const latin = P.name.replace(/\s*\([^)]*\)\s*$/, '').trim();
     // The local name (the WCIF's name in brackets), when the kit sends it.
@@ -241,7 +243,7 @@ class Component extends DCLogic {
 
     if (face === 'front') {
       const ASP = 1645.44 / 424.19;
-      const holeR = 7.5;
+      const holeR = hole ? 7.5 : 0;
       const showDate = tier >= 2;
       const compMax = clamp(s * 0.085, 3.8, 8.5);
       const dateMax = clamp(s * 0.038, 2.4, 4);
@@ -399,7 +401,7 @@ class Component extends DCLogic {
       const numSizeB = nbMax * 1.18;
       const numWB = numSizeB * 0.64 * idStr.length + 1;
       const nb = fitW(latin, w - 2 * m - numWB - 3, nbMax, W800, 0);
-      const hzB = clamp(s * 0.117, 10, 10.5);
+      const hzB = hole ? clamp(s * 0.117, 10, 10.5) : m * 0.8;
       const bandHB = hzB + Math.max(nb, numSizeB) * 1.08 + m * 0.6;
       g.bband = { flex: 'none', height: mm(bandHB), boxSizing: 'border-box', background: R.bg, color: R.fg, borderBottom: R.rule ? '1.2mm solid ' + R.rule : 'none', padding: mm(hzB) + ' ' + mm(m) + ' 0 ' + mm(m), display: 'flex', flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: mm(3) };
       g.bname = { fontSize: mm(nb), lineHeight: 1.08, fontWeight: 800, whiteSpace: 'nowrap', minWidth: 0, marginLeft: mm(-nb * lsbOf(latin)) };

@@ -198,7 +198,9 @@ class Component extends DCLogic {
     const s = Math.min(w, h);
     const tier = s < 60 ? 1 : (s < 85 ? 2 : 3);
     const m = clamp(s * 0.07, 3.5, 7);
-    const hz = clamp(s * 0.117, 10, 10.5);
+    // The kit can say the card has no punch hole (props.hole false); the top then needs no clear zone.
+    const hole = this.props.hole !== false;
+    const hz = hole ? clamp(s * 0.117, 10, 10.5) : m * 0.8;
     const rW = clamp(w * 0.28, 22, 40);
     const latin = P.name.replace(/\s*\([^)]*\)\s*$/, '').trim();
     // The local name (the WCIF's name in brackets), when the kit sends it.
@@ -247,7 +249,7 @@ class Component extends DCLogic {
     if (face === 'front') {
       const ASP = 2066.9 / 424.19;
       const topPad = m * 0.6;
-      const holeR = 4;
+      const holeR = hole ? 4 : 0;
       const halfAvail = w / 2 - holeR - m - 1;
       const showDate = tier >= 2;
       const compMax = clamp(s * 0.085, 3.8, 8.5);
@@ -261,7 +263,7 @@ class Component extends DCLogic {
       if (!land) {
         logoH = Math.min(halfAvail / ASP, clamp(s * 0.15, 6, 15));
         const compSize = fit(COMP.name, w - 2 * m, compMax, 0.56);
-        const compGap = Math.max(2, 10 - topPad - Math.max(logoH, dateH));
+        const compGap = Math.max(2, (hole ? 10 : 0) - topPad - Math.max(logoH, dateH));
         bandH = topPad + Math.max(logoH, dateH) + compGap + compSize * 1.12 + m * 0.55;
         g.compInRight = false;
         g.compBelow = true;

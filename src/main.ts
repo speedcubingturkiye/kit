@@ -89,8 +89,10 @@ const badge = {
   qrText: query.get('qt') ?? '',
   // The back's schedule as one table or two side by side; '' leaves it to the design (two when one does not fit).
   split: (['one', 'two'].includes(query.get('tb') ?? '') ? query.get('tb') : '') as '' | 'one' | 'two',
+  // Room for a punch hole at the top centre, on unless unticked (cards in a sleeve need none).
+  hole: query.get('h') !== '0',
 };
-type BadgeFlag = 'times' | 'stages' | 'stations' | 'hideStaffOnly' | 'localNames' | 'tasks' | 'number' | 'qr';
+type BadgeFlag = 'times' | 'stages' | 'stations' | 'hideStaffOnly' | 'localNames' | 'tasks' | 'number' | 'qr' | 'hole';
 // Certificate designs: the outer one draws the page (ground, frame, bands), the inner one writes on it; any of A-E
 // goes with any. event narrows the preview and the print to one event ('' for all).
 const CERT_DESIGNS = ['A', 'B', 'C', 'D', 'E'] as const;
@@ -135,6 +137,7 @@ function syncUrl() {
     if (badge.qrLink) q.set('ql', badge.qrLink);
     if (badge.qrText) q.set('qt', badge.qrText);
     if (badge.split) q.set('tb', badge.split);
+    if (!badge.hole) q.set('h', '0');
   }
   history.replaceState(null, '', `?${q}`);
 }
@@ -464,7 +467,7 @@ function cards(w: Wcif, people: Person[]): HTMLElement[][] {
   const activities = indexActivities(w);
   const shared = {
     ...cardSize(), lang: badge.lang, comp: badgeComp(w, badge.lang), icons: ICON_URIS,
-    qr: badge.qr ? qrOf(w).path : false, qrCaption: badge.qrText, tasks: badge.tasks, number: badge.number, split: badge.split,
+    qr: badge.qr ? qrOf(w).path : false, qrCaption: badge.qrText, tasks: badge.tasks, number: badge.number, split: badge.split, hole: badge.hole,
   };
   const options = { times: badge.times, stages: badge.stages, stations: badge.stations, hideStaffOnly: badge.hideStaffOnly, localNames: badge.localNames };
   return people.map((p) => {
@@ -582,6 +585,7 @@ function badgeView(w: Wcif, people: Person[]) {
   );
   const checks = el('div', 'checks');
   checks.append(
+    box(t('card'), flag('hole', 'showHole')),
     box(t('faceFront'), flag('number', 'showNumber'), flag('localNames', 'showLocal')),
     box(t('faceBack'), flag('times', 'showTimes'), ...(multiStage(w) ? [flag('stages', 'showStages')] : []), flag('stations', 'showStations'),
       flag('tasks', 'showTasks'), flag('hideStaffOnly', 'hideStaffOnly'), flag('qr', 'showQr', (v) => { qrFields.hidden = !v; })),
