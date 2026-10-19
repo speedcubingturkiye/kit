@@ -425,11 +425,14 @@ class Component extends DCLogic {
       });
       let groups = [items];
       // Two tables side by side: on landscape cards without a QR (over 5 events), and on any card whose events
-      // do not fit one table even at the smallest row height (2.8 mm).
-      if ((!showQR && land && items.length > 5) || (items.length + (tier >= 2 && !en ? 1.9 : 1.15)) * 2.8 > tableH) {
+      // do not fit one table even at the smallest row height (2.8 mm). The kit can ask for one table (props.split
+      // 'one') or two (props.split 'two').
+      const split = this.props.split === 'two' ? items.length > 1 : this.props.split !== 'one'
+        && ((!showQR && land && items.length > 5) || (items.length + (tier >= 2 && !en ? 1.9 : 1.15)) * 2.8 > tableH);
+      if (split) {
         let half = Math.ceil(items.length / 2);
         // A day heading does not end a column, and the second column repeats the day it starts in.
-        if (items[half - 1].heading) half -= 1;
+        if (items[half - 1].heading && half > 1) half -= 1;
         const second = items.slice(half);
         if (multiDay && second.length && !second[0].heading && second[0].day) second.unshift({ day: second[0].day, heading: true });
         groups = [items.slice(0, half), second];
@@ -439,7 +442,8 @@ class Component extends DCLogic {
       const perGroup = Math.max(1, ...groups.map((x) => x.length));
       const showEn = tier >= 2;
       const headU = showEn && !en ? 1.9 : 1.15;
-      const rowH = Math.max(2.8, Math.min(clamp(s * 0.1, 4.4, 8.6), tableH / (perGroup + headU)));
+      // One table on request may need rows lower than 2.8 mm to fit.
+      const rowH = Math.max(this.props.split === 'one' ? 0 : 2.8, Math.min(clamp(s * 0.1, 4.4, 8.6), tableH / (perGroup + headU)));
       const rf0 = rowH * 0.5;
       const hTr0 = clamp(rf0 * 0.72, 1.6, 2.9);
       // Task lists' widths in em (weight 800; the width tables have no comma or dash).

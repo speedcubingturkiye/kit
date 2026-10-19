@@ -87,6 +87,8 @@ const badge = {
   qr: query.get('qr') !== '0',
   qrLink: query.get('ql') ?? '',
   qrText: query.get('qt') ?? '',
+  // The back's schedule as one table or two side by side; '' leaves it to the design (two when one does not fit).
+  split: (['one', 'two'].includes(query.get('tb') ?? '') ? query.get('tb') : '') as '' | 'one' | 'two',
 };
 type BadgeFlag = 'times' | 'stages' | 'stations' | 'hideStaffOnly' | 'localNames' | 'tasks' | 'number' | 'qr';
 // Certificate designs: the outer one draws the page (ground, frame, bands), the inner one writes on it; any of A-E
@@ -132,6 +134,7 @@ function syncUrl() {
     if (!badge.qr) q.set('qr', '0');
     if (badge.qrLink) q.set('ql', badge.qrLink);
     if (badge.qrText) q.set('qt', badge.qrText);
+    if (badge.split) q.set('tb', badge.split);
   }
   history.replaceState(null, '', `?${q}`);
 }
@@ -461,7 +464,7 @@ function cards(w: Wcif, people: Person[]): HTMLElement[][] {
   const activities = indexActivities(w);
   const shared = {
     ...cardSize(), lang: badge.lang, comp: badgeComp(w, badge.lang), icons: ICON_URIS,
-    qr: badge.qr ? qrOf(w).path : false, qrCaption: badge.qrText, tasks: badge.tasks, number: badge.number,
+    qr: badge.qr ? qrOf(w).path : false, qrCaption: badge.qrText, tasks: badge.tasks, number: badge.number, split: badge.split,
   };
   const options = { times: badge.times, stages: badge.stages, stations: badge.stations, hideStaffOnly: badge.hideStaffOnly, localNames: badge.localNames };
   return people.map((p) => {
@@ -548,6 +551,8 @@ function badgeView(w: Wcif, people: Person[]) {
     select(t('size'), Object.keys(SIZES).map((k) => [k, sizeLabel(k)]), badge.size, (v) => { badge.size = v; draw(); }),
     select(t('orientation'), [['p', t('portrait')], ['l', t('landscape')]], badge.land ? 'l' : 'p', (v) => { badge.land = v === 'l'; draw(); }),
     select(t('cardLang'), [['en', t('cardEn')], ['tr-en', t('cardTrEn')]], badge.lang, (v) => { badge.lang = v as BadgeLang; draw(); }),
+    select(t('backTable'), [['', t('tableAuto')], ['one', t('tableOne')], ['two', t('tableTwo')]], badge.split,
+      (v) => { badge.split = v as typeof badge.split; draw(); }),
   );
   // Badgifier's options, by face; stages only when the competition uses more than one. The QR's own link and caption
   // come next when the QR is on.
