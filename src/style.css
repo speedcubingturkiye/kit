@@ -88,6 +88,12 @@ main .wrap > *, #out > * { min-width: 0; }
 .opts { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; }
 .opts label { display: grid; gap: 4px; font-size: 13px; }
 .opts select, .nav select { font: 15px var(--font); padding: 8px 10px; border: 1px solid var(--ink); background: var(--paper); color: var(--ink); }
+.pick { display: flex; align-items: center; gap: 6px; }
+.pick input[type="color"] { width: 56px; height: 40px; padding: 2px; border: 1px solid var(--ink); background: var(--paper); cursor: pointer; }
+.pick input[type="file"] { font: 14px var(--font); max-width: 250px; }
+label.swatch { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.swatch input[type="color"] { width: 30px; height: 22px; padding: 1px; border: 1px solid var(--ink); background: var(--paper); cursor: pointer; }
+.checks .step { width: 28px; height: 28px; font-size: 16px; }
 .checks { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-start; }
 .checks fieldset { margin: 0; padding: 4px 10px 8px; border: 1px solid var(--hair); display: grid; gap: 4px; }
 .checks legend { padding: 0 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }

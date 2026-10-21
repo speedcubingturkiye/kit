@@ -69,6 +69,12 @@ const query = new URLSearchParams(location.search);
 type View = 'people' | 'badges' | 'certificates';
 const VIEWS: View[] = ['people', 'badges', 'certificates'];
 let view: View = VIEWS.find((v) => v === query.get('v')) ?? 'people';
+const SCTR_RED = '#e30a17';
+// The badge designs' role strip colours; the kit can pick others (URL rk: the four in this order, without #).
+const ROLE_COLORS = { competitor: '#1a1a1a', delegate: SCTR_RED, organizer: '#f4f4f2', staff: '#f4f4f2' };
+type StripRole = keyof typeof ROLE_COLORS;
+const STRIP_ROLES = Object.keys(ROLE_COLORS) as StripRole[];
+const rk = (query.get('rk') ?? '').split('-');
 const badge = {
   design: (query.get('d') === 'B' ? 'B' : 'A') as keyof typeof DESIGNS,
   size: (query.get('s') ?? '') in SIZES ? (query.get('s') as string) : '9x12',
@@ -91,6 +97,8 @@ const badge = {
   split: (['one', 'two'].includes(query.get('tb') ?? '') ? query.get('tb') : '') as '' | 'one' | 'two',
   // Room for a punch hole at the top centre, on unless unticked (cards in a sleeve need none).
   hole: query.get('h') !== '0',
+  roles: Object.fromEntries(STRIP_ROLES.map((k, i) =>
+    [k, /^[0-9a-f]{6}$/i.test(rk[i] ?? '') ? `#${rk[i].toLowerCase()}` : ROLE_COLORS[k]])) as Record<StripRole, string>,
 };
 type BadgeFlag = 'times' | 'stages' | 'stations' | 'hideStaffOnly' | 'localNames' | 'tasks' | 'number' | 'qr' | 'hole';
 // Certificate designs: the outer one draws the page (ground, frame, bands), the inner one writes on it; any of A-E
@@ -107,10 +115,23 @@ const certOpts = {
   text: (['none', 'full'].includes(query.get('ct') ?? '') ? query.get('ct') : 'short') as 'short' | 'none' | 'full',
   certLang: query.get('cg') === 'tr-en' ? 'tr-en' : 'en',
 };
+// The colour in place of SCTR red and an uploaded logo in place of SCTR's, on badges and certificates alike. The logo
+// is kept in memory only, with its file so that a rebuilt view's file input still shows it. On a coloured band (the
+// badge front, certificate A) the logo stays as it is, sits on white ('plate') or takes the band's type colour ('mono').
+// The backdrop is the design's own ('': SCTR's mark, none on certificates D and E), SCTR's mark, the uploaded logo or
+// none (URL wm: sctr or none).
+const brand = {
+  accent: /^[0-9a-f]{6}$/i.test(query.get('cc') ?? '') ? `#${query.get('cc')!.toLowerCase()}` : SCTR_RED,
+  logo: '',
+  file: null as File | null,
+  onBand: '' as '' | 'plate' | 'mono',
+  backdrop: (['sctr', 'none'].includes(query.get('wm') ?? '') ? query.get('wm') : '') as '' | 'sctr' | 'logo' | 'none',
+};
 // The certificate design's props for one certificate.
 const certProps = (cert: Cert) => ({
   outer: certOpts.outer, inner: certOpts.inner, cert,
   border: certOpts.border, letters: certOpts.letters, text: certOpts.text, lang: certOpts.certLang,
+  accent: brand.accent, logo: brand.logo, logoOnBand: brand.onBand, watermark: brand.backdrop,
 });
 let statusKey: { key: keyof typeof TEXT.tr; status?: string } | null = null;
 const pageStyle = document.head.appendChild(document.createElement('style'));
@@ -124,6 +145,7 @@ function setStatus(key: keyof typeof TEXT.tr | null, status?: string) {
   $('status').textContent = key ? fill(t(key), { status: status ?? '' }) : '';
 }
 
+let urlTimer = 0;
 function syncUrl() {
   if (!wcif) return;
   const q = new URLSearchParams({ c: wcif.id });
@@ -155,8 +177,20 @@ function syncUrl() {
     if (badge.qrText) q.set('qt', badge.qrText);
     if (badge.split) q.set('tb', badge.split);
     if (!badge.hole) q.set('h', '0');
+    if (STRIP_ROLES.some((k) => badge.roles[k] !== ROLE_COLORS[k])) q.set('rk', STRIP_ROLES.map((k) => badge.roles[k].slice(1)).join('-'));
   }
-  history.replaceState(null, '', `?${q}`);
+  if (view !== 'people' && brand.accent !== SCTR_RED) q.set('cc', brand.accent.slice(1));
+  if (view !== 'people' && (brand.backdrop === 'sctr' || brand.backdrop === 'none')) q.set('wm', brand.backdrop);
+  // Written once the options settle: a dragged colour picker changes them every frame, and browsers limit how often
+  // the address may change (Chrome drops the excess, Safari throws).
+  clearTimeout(urlTimer);
+  urlTimer = window.setTimeout(() => history.replaceState(null, '', `?${q}`), 200);
+}
+
+// A colour picker fires on every move of the pointer; its view redraws at most once a frame.
+function perFrame(f: () => void) {
+  let id = 0;
+  return () => { id ||= requestAnimationFrame(() => { id = 0; f(); }); };
 }
 
 // Static texts carry data-t attributes; everything else is rebuilt from the loaded WCIF.
@@ -303,13 +337,8 @@ function certView(w: Wcif) {
     preview.replaceChildren(pair);
     fitPreview(preview);
   };
-  const arrow = (text: string, label: string, step: number) => {
-    const b = el('button', 'step', text);
-    b.setAttribute('type', 'button');
-    b.setAttribute('aria-label', label);
-    b.addEventListener('click', () => { certAt = (certAt + step + certs.length) % certs.length; draw(); });
-    return b;
-  };
+  const arrow = (text: string, label: string, step: number) =>
+    stepButton(text, label, () => { certAt = (certAt + step + certs.length) % certs.length; draw(); });
   pick.addEventListener('change', () => { certAt = Number(pick.value); draw(); });
   const pickLabel = el('label', '', t('preview'));
   pickLabel.setAttribute('for', pick.id);
@@ -320,11 +349,12 @@ function certView(w: Wcif) {
   evLabel.append(el('span', '', t('certEvent')), events);
   events.addEventListener('change', () => { certOpts.event = events.value; certAt = 0; draw(); });
   const designs = CERT_DESIGNS.map((d): [string, string] => [d, d]);
-  // The chosen designs' own options: B's frame when B is outside, C's capitals and A's sentence and language when
-  // they are inside.
+  // The colour and the logo first, then the chosen designs' own options: B's frame when B is outside, C's capitals
+  // and A's sentence and language when they are inside.
+  const brandRow = brandFields(draw);
   const custom = el('div', 'opts');
   const customize = () => {
-    custom.replaceChildren(...[
+    custom.replaceChildren(...brandRow, ...[
       certOpts.outer === 'B' && select(t('certFrame'), [['band', t('frameBand')], ['line', t('frameLine')]], certOpts.border,
         (v) => { certOpts.border = v; draw(); }),
       certOpts.inner === 'C' && select(t('certLetters'), [['condensed', t('lettersCond')], ['normal', t('lettersNormal')]], certOpts.letters,
@@ -334,7 +364,6 @@ function certView(w: Wcif) {
       certOpts.inner === 'A' && select(t('certLang'), [['en', t('cardEn')], ['tr-en', t('cardTrEn')]], certOpts.certLang,
         (v) => { certOpts.certLang = v; draw(); }),
     ].filter((x): x is HTMLLabelElement => !!x));
-    custom.hidden = !custom.childElementCount;
   };
   customize();
   const opts = el('div', 'opts');
@@ -383,6 +412,7 @@ async function printCertificates(w: Wcif, certs: Cert[]) {
     page(297, 210, [[renderDesign(certDesign, certProps(c)), 0, 0]])));
   await document.fonts.load('800 10px Archivo', 'AaİıŞşĞğ');
   await document.fonts.ready;
+  await imagesIn($('print'));
   // The title becomes the PDF's file name.
   const title = document.title;
   document.title = [w.id, lang === 'tr' ? 'derece-belgeleri' : 'certificates', certOpts.outer + certOpts.inner, certOpts.event].filter(Boolean).join('-');
@@ -502,8 +532,9 @@ function cards(w: Wcif, people: Person[]): HTMLElement[][] {
   const shared = {
     ...cardSize(), lang: badge.lang, comp: badgeComp(w, badge.lang), icons: ICON_URIS,
     qr: badge.qr ? qrOf(w).path : false, qrCaption: badge.qrText, tasks: badge.tasks, number: badge.number, split: badge.split, hole: badge.hole,
+    accent: brand.accent, logo: brand.logo, logoOnBand: brand.onBand, watermark: brand.backdrop, roles: badge.roles,
   };
-  const options = { times: badge.times, stages: badge.stages, stations: badge.stations, hideStaffOnly: badge.hideStaffOnly, localNames: badge.localNames };
+  const options ={ times: badge.times, stages: badge.stages, stations: badge.stations, hideStaffOnly: badge.hideStaffOnly, localNames: badge.localNames };
   return people.map((p) => {
     const flag = flags?.[p.countryIso2];
     const props = { ...shared, person: badgePerson(p, w, activities, badge.lang, flag ? svgUri(flag) : '', options) };
@@ -529,6 +560,70 @@ function checkbox(label: string, checked: boolean, set: (v: boolean) => void) {
   l.append(c, el('span', '', label));
   return l;
 }
+
+// A small square button (‹ › ↺ ×), its label read out and shown as a tooltip.
+function stepButton(text: string, label: string, click: () => void) {
+  const b = el('button', 'step', text);
+  b.setAttribute('type', 'button');
+  b.setAttribute('aria-label', label);
+  b.title = label;
+  b.addEventListener('click', click);
+  return b;
+}
+
+// The colour and the logo, each with a way back to SCTR's; redraw is the view's own.
+function brandFields(redraw: () => void) {
+  const colorPick = document.createElement('input');
+  colorPick.type = 'color';
+  colorPick.value = brand.accent;
+  const soon = perFrame(redraw);
+  const setColor = (v: string) => {
+    brand.accent = colorPick.value = v;
+    uncolor.hidden = v === SCTR_RED;
+    soon();
+  };
+  const uncolor = stepButton('↺', t('colorReset'), () => setColor(SCTR_RED));
+  uncolor.hidden = brand.accent === SCTR_RED;
+  colorPick.addEventListener('input', () => setColor(colorPick.value));
+  const logoPick = document.createElement('input');
+  logoPick.type = 'file';
+  logoPick.accept = 'image/*';
+  const unlogo = stepButton('×', t('logoRemove'), () => setLogo(null));
+  const onBand = select(t('logoBand'), [['', t('logoAsIs')], ['plate', t('logoPlate')], ['mono', t('logoMono')]], brand.onBand,
+    (v) => { brand.onBand = v as typeof brand.onBand; redraw(); });
+  const backdrop = select(t('backdrop'), [['', t('backdropDesign')], ['sctr', 'SCTR'], ['logo', t('backdropLogo')], ['none', t('backdropNone')]],
+    brand.backdrop, (v) => { brand.backdrop = v as typeof brand.backdrop; redraw(); });
+  const backdropPick = backdrop.querySelector('select')!;
+  const show = () => {
+    const files = new DataTransfer();
+    if (brand.file) files.items.add(brand.file);
+    logoPick.files = files.files;
+    unlogo.hidden = onBand.hidden = !brand.logo;
+    // The uploaded logo can be the backdrop only while there is one.
+    backdropPick.options[2].disabled = !brand.logo;
+    if (!brand.logo && brand.backdrop === 'logo') brand.backdrop = backdropPick.value = '';
+  };
+  const setLogo = (f: File | null) => {
+    if (brand.logo) URL.revokeObjectURL(brand.logo);
+    brand.file = f?.type.startsWith('image/') ? f : null;
+    brand.logo = brand.file ? URL.createObjectURL(brand.file) : '';
+    show();
+    redraw();
+  };
+  show();
+  logoPick.addEventListener('change', () => setLogo(logoPick.files?.[0] ?? null));
+  const field = (label: string, ...items: HTMLElement[]) => {
+    const l = el('label');
+    const row = el('div', 'pick');
+    row.append(...items);
+    l.append(el('span', '', label), row);
+    return l;
+  };
+  return [field(t('color'), colorPick, uncolor), field(t('logo'), logoPick, unlogo), onBand, backdrop];
+}
+
+// The flags and an uploaded logo are images; a print waits for them.
+const imagesIn = (root: HTMLElement) => Promise.all(Array.from(root.querySelectorAll('img'), (i) => i.decode().catch(() => {})));
 
 // One person's badge at a time; the print button makes everyone's pages.
 function badgeView(w: Wcif, people: Person[]) {
@@ -567,13 +662,8 @@ function badgeView(w: Wcif, people: Person[]) {
     preview.replaceChildren(pair);
     fitPreview(preview);
   };
-  const arrow = (text: string, label: string, step: number) => {
-    const b = el('button', 'step', text);
-    b.setAttribute('type', 'button');
-    b.setAttribute('aria-label', label);
-    b.addEventListener('click', () => { previewAt = (previewAt + step + people.length) % people.length; draw(); });
-    return b;
-  };
+  const arrow = (text: string, label: string, step: number) =>
+    stepButton(text, label, () => { previewAt = (previewAt + step + people.length) % people.length; draw(); });
   pick.addEventListener('change', () => { previewAt = Number(pick.value); draw(); });
   if (people.length) {
     const label = el('label', '', t('preview'));
@@ -611,6 +701,24 @@ function badgeView(w: Wcif, people: Person[]) {
     l.append(el('span', '', label), i);
     return l;
   };
+  // Each role's strip colour, with a way back to the design's.
+  const soon = perFrame(draw);
+  const swatches = STRIP_ROLES.map((k) => {
+    const i = document.createElement('input');
+    i.type = 'color';
+    i.value = badge.roles[k];
+    i.addEventListener('input', () => { badge.roles[k] = i.value; showReset(); soon(); });
+    const l = el('label', 'swatch');
+    l.append(i, el('span', '', TEXT[lang].roles[k]));
+    return { k, i, l };
+  });
+  const rolesReset = stepButton('↺', t('rolesReset'), () => {
+    swatches.forEach(({ k, i }) => { badge.roles[k] = i.value = ROLE_COLORS[k]; });
+    showReset();
+    draw();
+  });
+  const showReset = () => { rolesReset.hidden = STRIP_ROLES.every((k) => badge.roles[k] === ROLE_COLORS[k]); };
+  showReset();
   const qrFields = el('div', 'qr-fields');
   qrFields.hidden = !badge.qr;
   qrFields.append(
@@ -623,11 +731,12 @@ function badgeView(w: Wcif, people: Person[]) {
     box(t('faceFront'), flag('number', 'showNumber'), flag('localNames', 'showLocal')),
     box(t('faceBack'), flag('times', 'showTimes'), ...(multiStage(w) ? [flag('stages', 'showStages')] : []), flag('stations', 'showStations'),
       flag('tasks', 'showTasks'), flag('hideStaffOnly', 'hideStaffOnly'), flag('qr', 'showQr', (v) => { qrFields.hidden = !v; })),
+    box(t('roleStrips'), ...swatches.map((s) => s.l), rolesReset),
   );
   const go = el('button', 'go', t('print'));
   go.setAttribute('type', 'button');
   go.addEventListener('click', () => printBadges(w, people));
-  opts.append(go);
+  opts.append(...brandFields(draw), go);
   draw();
   return [opts, checks, qrFields, notes, nav, preview];
 }
@@ -644,6 +753,7 @@ async function printBadges(w: Wcif, people: Person[]) {
   // The bleed is measured, so Archivo (both subsets) must be in before the layout is read.
   await document.fonts.load('800 10px Archivo', 'AaİıŞşĞğ');
   await document.fonts.ready;
+  await imagesIn($('print'));
   if (!onSheets()) for (const page of pages) addBleed(page, cw, ch);
   // The title becomes the PDF's file name.
   const title = document.title;
