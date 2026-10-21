@@ -118,14 +118,14 @@ const certOpts = {
 // The colour in place of SCTR red and an uploaded logo in place of SCTR's, on badges and certificates alike. The logo
 // is kept in memory only, with its file so that a rebuilt view's file input still shows it. On a coloured band (the
 // badge front, certificate A) the logo stays as it is, sits on white ('plate') or takes the band's type colour ('mono').
-// The backdrop is the design's own ('': SCTR's mark, none on certificates D and E), SCTR's mark, the uploaded logo or
-// none (URL wm: sctr or none).
+// The backdrop is SCTR's mark on every design, certificates D and E included, unless it is the uploaded logo or none
+// (URL wm=none).
 const brand = {
   accent: /^[0-9a-f]{6}$/i.test(query.get('cc') ?? '') ? `#${query.get('cc')!.toLowerCase()}` : SCTR_RED,
   logo: '',
   file: null as File | null,
   onBand: '' as '' | 'plate' | 'mono',
-  backdrop: (['sctr', 'none'].includes(query.get('wm') ?? '') ? query.get('wm') : '') as '' | 'sctr' | 'logo' | 'none',
+  backdrop: (query.get('wm') === 'none' ? 'none' : 'sctr') as 'sctr' | 'logo' | 'none',
 };
 // The certificate design's props for one certificate.
 const certProps = (cert: Cert) => ({
@@ -180,7 +180,7 @@ function syncUrl() {
     if (STRIP_ROLES.some((k) => badge.roles[k] !== ROLE_COLORS[k])) q.set('rk', STRIP_ROLES.map((k) => badge.roles[k].slice(1)).join('-'));
   }
   if (view !== 'people' && brand.accent !== SCTR_RED) q.set('cc', brand.accent.slice(1));
-  if (view !== 'people' && (brand.backdrop === 'sctr' || brand.backdrop === 'none')) q.set('wm', brand.backdrop);
+  if (view !== 'people' && brand.backdrop === 'none') q.set('wm', 'none');
   // Written once the options settle: a dragged colour picker changes them every frame, and browsers limit how often
   // the address may change (Chrome drops the excess, Safari throws).
   clearTimeout(urlTimer);
@@ -591,7 +591,7 @@ function brandFields(redraw: () => void) {
   const unlogo = stepButton('×', t('logoRemove'), () => setLogo(null));
   const onBand = select(t('logoBand'), [['', t('logoAsIs')], ['plate', t('logoPlate')], ['mono', t('logoMono')]], brand.onBand,
     (v) => { brand.onBand = v as typeof brand.onBand; redraw(); });
-  const backdrop = select(t('backdrop'), [['', t('backdropDesign')], ['sctr', 'SCTR'], ['logo', t('backdropLogo')], ['none', t('backdropNone')]],
+  const backdrop = select(t('backdrop'), [['sctr', 'SCTR'], ['logo', t('backdropLogo')], ['none', t('backdropNone')]],
     brand.backdrop, (v) => { brand.backdrop = v as typeof brand.backdrop; redraw(); });
   const backdropPick = backdrop.querySelector('select')!;
   const show = () => {
@@ -600,8 +600,8 @@ function brandFields(redraw: () => void) {
     logoPick.files = files.files;
     unlogo.hidden = onBand.hidden = !brand.logo;
     // The uploaded logo can be the backdrop only while there is one.
-    backdropPick.options[2].disabled = !brand.logo;
-    if (!brand.logo && brand.backdrop === 'logo') brand.backdrop = backdropPick.value = '';
+    backdropPick.options[1].disabled = !brand.logo;
+    if (!brand.logo && brand.backdrop === 'logo') brand.backdrop = backdropPick.value = 'sctr';
   };
   const setLogo = (f: File | null) => {
     if (brand.logo) URL.revokeObjectURL(brand.logo);
