@@ -339,7 +339,9 @@ class Component extends DCLogic {
     const scope = !cert && SCOPES[this.props.scope] ? this.props.scope : 'open';
     const text = ['none', 'full'].indexOf(this.props.text) >= 0 ? this.props.text : 'short';
     const lang = this.props.lang === 'tr-en' ? 'tr-en' : 'en';
-    const SIGNS = cert ? cert.signs.map((s) => [s[0], s[1], s[1]]) : [['AJ Nicholls', 'WCA DELEGESİ', 'WCA DELEGATE'], ['Kutay Temel', 'ORGANİZATÖR', 'ORGANIZER']];
+    // The kit sends the roles in English; the bilingual certificate needs them in Turkish too.
+    const ROLE_TR = { 'WCA DELEGATE': 'WCA DELEGESİ', ORGANIZER: 'ORGANİZATÖR' };
+    const SIGNS = cert ? cert.signs.map((s) => [s[0], ROLE_TR[s[1]] || s[1], s[1]]) : [['AJ Nicholls', 'WCA DELEGESİ', 'WCA DELEGATE'], ['Kutay Temel', 'ORGANİZATÖR', 'ORGANIZER']];
     const COMP = cert ? { name: cert.comp.name, date: dateCity(cert.comp.dateShort, cert.comp.city) } :{ name: 'New Age Turkey 2026', date: '31 EKİM - 1 KASIM · İSTANBUL' };
     const CN = { TR: 'Türkiye', IT: 'İtalya' };
     const ICON_LSB = { '333': 29.5, '222': 46.8, '444': 23.4, '555': 30.3, clock: 40, pyram: 38, skewb: 43, sq1: 50 };

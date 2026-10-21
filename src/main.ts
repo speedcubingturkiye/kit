@@ -98,7 +98,20 @@ type BadgeFlag = 'times' | 'stages' | 'stations' | 'hideStaffOnly' | 'localNames
 const CERT_DESIGNS = ['A', 'B', 'C', 'D', 'E'] as const;
 type CertDesign = (typeof CERT_DESIGNS)[number];
 const certDesignOf = (v: string | null, d: CertDesign) => CERT_DESIGNS.find((k) => k === v) ?? d;
-const certOpts = { outer: certDesignOf(query.get('out'), 'C'), inner: certDesignOf(query.get('in'), 'B'), event: query.get('ev') ?? '' };
+const certOpts = {
+  outer: certDesignOf(query.get('out'), 'C'), inner: certDesignOf(query.get('in'), 'B'), event: query.get('ev') ?? '',
+  // Each design's own touches: B's outer frame as a band or a thin line on white, C's capitals condensed or
+  // normal width, and inner A's sentence and language.
+  border: query.get('cb') === 'line' ? 'line' : 'band',
+  letters: query.get('cl') === 'normal' ? 'normal' : 'condensed',
+  text: (['none', 'full'].includes(query.get('ct') ?? '') ? query.get('ct') : 'short') as 'short' | 'none' | 'full',
+  certLang: query.get('cg') === 'tr-en' ? 'tr-en' : 'en',
+};
+// The certificate design's props for one certificate.
+const certProps = (cert: Cert) => ({
+  outer: certOpts.outer, inner: certOpts.inner, cert,
+  border: certOpts.border, letters: certOpts.letters, text: certOpts.text, lang: certOpts.certLang,
+});
 let statusKey: { key: keyof typeof TEXT.tr; status?: string } | null = null;
 const pageStyle = document.head.appendChild(document.createElement('style'));
 
@@ -119,6 +132,10 @@ function syncUrl() {
     q.set('out', certOpts.outer);
     q.set('in', certOpts.inner);
     if (certOpts.event) q.set('ev', certOpts.event);
+    if (certOpts.border === 'line') q.set('cb', 'line');
+    if (certOpts.letters === 'normal') q.set('cl', 'normal');
+    if (certOpts.text !== 'short') q.set('ct', certOpts.text);
+    if (certOpts.certLang === 'tr-en') q.set('cg', 'tr-en');
   }
   if (view === 'badges') {
     q.set('v', 'badges');
@@ -282,7 +299,7 @@ function certView(w: Wcif) {
     pick.value = String(certAt);
     count.textContent = `${certAt + 1} / ${certs.length}`;
     const pair = el('div', 'pair');
-    pair.append(renderDesign(certDesign, { outer: certOpts.outer, inner: certOpts.inner, cert: certs[certAt] }));
+    pair.append(renderDesign(certDesign, certProps(certs[certAt])));
     preview.replaceChildren(pair);
     fitPreview(preview);
   };
@@ -303,10 +320,27 @@ function certView(w: Wcif) {
   evLabel.append(el('span', '', t('certEvent')), events);
   events.addEventListener('change', () => { certOpts.event = events.value; certAt = 0; draw(); });
   const designs = CERT_DESIGNS.map((d): [string, string] => [d, d]);
+  // The chosen designs' own options: B's frame when B is outside, C's capitals and A's sentence and language when
+  // they are inside.
+  const custom = el('div', 'opts');
+  const customize = () => {
+    custom.replaceChildren(...[
+      certOpts.outer === 'B' && select(t('certFrame'), [['band', t('frameBand')], ['line', t('frameLine')]], certOpts.border,
+        (v) => { certOpts.border = v; draw(); }),
+      certOpts.inner === 'C' && select(t('certLetters'), [['condensed', t('lettersCond')], ['normal', t('lettersNormal')]], certOpts.letters,
+        (v) => { certOpts.letters = v; draw(); }),
+      certOpts.inner === 'A' && select(t('certText'), [['short', t('textShort')], ['none', t('textNone')], ['full', t('textFull')]], certOpts.text,
+        (v) => { certOpts.text = v as typeof certOpts.text; draw(); }),
+      certOpts.inner === 'A' && select(t('certLang'), [['en', t('cardEn')], ['tr-en', t('cardTrEn')]], certOpts.certLang,
+        (v) => { certOpts.certLang = v; draw(); }),
+    ].filter((x): x is HTMLLabelElement => !!x));
+    custom.hidden = !custom.childElementCount;
+  };
+  customize();
   const opts = el('div', 'opts');
   opts.append(
-    select(t('outer'), designs, certOpts.outer, (v) => { certOpts.outer = certDesignOf(v, 'C'); draw(); }),
-    select(t('inner'), designs, certOpts.inner, (v) => { certOpts.inner = certDesignOf(v, 'B'); draw(); }),
+    select(t('outer'), designs, certOpts.outer, (v) => { certOpts.outer = certDesignOf(v, 'C'); customize(); draw(); }),
+    select(t('inner'), designs, certOpts.inner, (v) => { certOpts.inner = certDesignOf(v, 'B'); customize(); draw(); }),
     evLabel,
     select(t('signDelegate'), names(delegates), signs.delegate, (v) => { signs.delegate = v; draw(); }),
     select(t('signOrganizer'), names(organizers), signs.organizer, (v) => { signs.organizer = v; draw(); }),
@@ -338,7 +372,7 @@ function certView(w: Wcif) {
   refresh.addEventListener('click', update);
   draw();
   if ((resultsPosted || scoretaking === 'wca_live') && !podiums) update();
-  return [bar, opts, notes, nav, preview, el('h3', 'finals', t('finals')), list];
+  return [bar, opts, custom, notes, nav, preview, el('h3', 'finals', t('finals')), list];
 }
 
 // A4 landscape, one certificate a page, edge to edge.
@@ -346,7 +380,7 @@ async function printCertificates(w: Wcif, certs: Cert[]) {
   if (!certs.length) return;
   pageStyle.textContent = '@page { size: 297mm 210mm; margin: 0; }';
   $('print').replaceChildren(...certs.map((c) =>
-    page(297, 210, [[renderDesign(certDesign, { outer: certOpts.outer, inner: certOpts.inner, cert: c }), 0, 0]])));
+    page(297, 210, [[renderDesign(certDesign, certProps(c)), 0, 0]])));
   await document.fonts.load('800 10px Archivo', 'AaİıŞşĞğ');
   await document.fonts.ready;
   // The title becomes the PDF's file name.
