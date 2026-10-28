@@ -507,7 +507,11 @@ class Component extends DCLogic {
       // 0.08em apart) and the short event names need. The text, the icons and the columns then shrink together.
       const evNeed = Math.max(rowH * 0.6 + rf0 * (hasStage && !hasTime ? 1.55 : 0.5) + rf0 * 0.85 * Math.max(...backRows.map((r) => tw((SHORT[r.ev] || EVN[r.ev] || r.ev) + roundOf(r), W600))),
         (tw(en ? 'EVENT' : 'BRANŞ', W800) * 1.1 + 0.4) * hTr0);
-      const kOf = (range) => (hasTime || hasStage || hasStation ? Math.min(1, gw / ([timeCol(range)].concat(others).reduce((a, b) => a + b, 0) + evNeed)) : 1);
+      // Filled rows (below) keep their text 0.4 em off the fill's edges, and the header and day lines keep in line.
+      const fill = this.props.rowFill;
+      const pad = fill === 'zebra' || fill === 'stage' ? rf0 * 0.4 : 0;
+      const gi = gw - 2 * pad;
+      const kOf = (range) => (hasTime || hasStage || hasStation ? Math.min(1, gi / ([timeCol(range)].concat(others).reduce((a, b) => a + b, 0) + evNeed)) : 1);
       const showRange = ranged && kOf(true) >= kOf(false) * 0.85;
       const fixed = [timeCol(showRange)].concat(others);
       const k = kOf(showRange);
@@ -525,16 +529,16 @@ class Component extends DCLogic {
       const hC = Object.assign({}, hEv, { alignItems: 'center', textAlign: 'center' });
       const hEn = { fontSize: mm(hTr * 0.78), fontWeight: 600, color: '#555555' };
       const rowStyle = { display: 'grid', gridTemplateColumns: cols, alignItems: 'center', height: mm(rowH), boxSizing: 'border-box', borderBottom: '0.25mm solid #e2e2e0', fontSize: mm(rf), lineHeight: 1 };
+      if (pad) [headStyle, rowStyle].forEach((st) => Object.assign(st, { paddingLeft: mm(pad), paddingRight: mm(pad) }));
       // Row fills (props.rowFill): every other row light grey from each day's first ('zebra'), or a light tint of the
       // row's stage colour ('stage'), which then needs no dot.
-      const fill = this.props.rowFill;
       const tintOf = (c) => (/^#[0-9a-f]{6}$/i.test(c || '') ? '#' + [1, 3, 5].map((i) => Math.round(255 - (255 - parseInt(c.slice(i, i + 2), 16)) * 0.25).toString(16).padStart(2, '0')).join('') : '');
       const rowOf = (r) => { const bg = fill === 'zebra' ? (r.zi % 2 === 0 ? '#f0f0ee' : '') : fill === 'stage' ? tintOf(r.stageColor) : ''; return bg ? Object.assign({}, rowStyle, { background: bg }) : rowStyle; };
       const evCell = { display: 'flex', alignItems: 'center', gap: mm(rf * 0.5), minWidth: 0, whiteSpace: 'nowrap' };
       const iconSt = { display: 'block', flex: 'none', width: mm(iconR), height: mm(iconR), color: '#1a1a1a' };
       const evText = { fontWeight: 600 };
       // A label longer than its column (Face Turning Octahedron on small cards) is set smaller to fit.
-      const evW = gw - colTime - colGrp - colStn - (showTask ? colTask : 0) - iconR - rf * 0.5 - (hasStage && !hasTime ? rf * 1.05 : 0);
+      const evW = gi - colTime - colGrp - colStn - (showTask ? colTask : 0) - iconR - rf * 0.5 - (hasStage && !hasTime ? rf * 1.05 : 0);
       const fitLabel = (t) => (tw(t, W600) * rf <= evW ? evText : Object.assign({}, evText, { fontSize: mm(evW / tw(t, W600)) }));
       // In a narrow table a long name that would drop below three quarters of the row text uses its short form.
       const labelOf = (r) => { const t = (EVN[r.ev] || r.ev) + roundOf(r); return SHORT[r.ev] && tw(t, W600) * rf * 0.75 > evW ? SHORT[r.ev] + roundOf(r) : t; };
@@ -583,6 +587,7 @@ class Component extends DCLogic {
       const tmStyle = { display: 'flex', alignItems: 'center', gap: mm(rf * 0.35), fontWeight: 700, fontSize: mm(rf), whiteSpace: 'nowrap' };
       const dotStyle = { flex: 'none', width: mm(rf * 0.7), height: mm(rf * 0.7), borderRadius: '50%' };
       const dayRowStyle = { display: 'flex', alignItems: 'flex-end', height: mm(rowH), boxSizing: 'border-box', paddingBottom: mm(rowH * 0.14), borderBottom: '0.25mm solid #e2e2e0', fontSize: mm(hTr), lineHeight: 1, fontWeight: 700, letterSpacing: '0.08em', color: '#555555', whiteSpace: 'nowrap' };
+      if (pad) Object.assign(dayRowStyle, { paddingLeft: mm(pad), paddingRight: mm(pad) });
       const DAYS_TR = ['PAZAR', 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ'];
       const DAYS_EN = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
       const dayLabel = (d) => { const k = new Date(d + 'T12:00:00Z').getUTCDay(); return en ? DAYS_EN[k] : showEn ? DAYS_TR[k] + ' · ' + DAYS_EN[k] : DAYS_TR[k]; };
