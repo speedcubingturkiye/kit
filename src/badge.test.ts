@@ -67,6 +67,8 @@ test('later rounds and the person\'s own times: a row for each round they are in
   const acts3 = indexActivities(r3);
   assert.deepEqual(badgeRows(r3.persons[0], r3, acts3, { times: true }).map((r) => [r[1], r[2], r[3], r[8] ?? '']), [
     ['2', 'J 1', '10:00–10:40', ''], ['–', 'J 1', '14:00–14:30', '2'], ['1', '–', '16:00–16:30', 'f']]);
+  // Or the starts alone, if asked.
+  assert.deepEqual(badgeRows(r3.persons[0], r3, acts3, { times: true, startsOnly: true }).map((r) => r[3]), ['10:00', '14:00', '16:00']);
   // Rounds the person only works in go with the option; before groups, the round's own times.
   assert.deepEqual(badgeRows(r3.persons[0], r3, acts3, { hideStaffOnly: true }).map((r) => r[8] ?? ''), ['', 'f']);
   assert.deepEqual(badgeRows(r3.persons[1], r3, acts3, { times: true }).map((r) => r.slice(1, 4)), [['', '–', '10:00–10:40']]);

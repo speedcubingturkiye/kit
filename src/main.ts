@@ -80,10 +80,11 @@ const badge = {
   size: (query.get('s') ?? '') in SIZES ? (query.get('s') as string) : '9x12',
   land: query.get('o') === 'l',
   lang: (query.get('l') === 'tr-en' ? 'tr-en' : 'en') as BadgeLang,
-  // Badgifier's options. Times, stages and stations on the back, events the person only works in left off, and local
-  // names: off unless ticked. The task column, the front's number and the QR: on unless unticked. The QR's link and
-  // caption may be the organiser's own.
+  // Badgifier's options. Times (their starts alone if asked), stages and stations on the back, events the person only
+  // works in left off, and local names: off unless ticked. The task column, the front's number and the QR: on unless
+  // unticked. The QR's link and caption may be the organiser's own.
   times: query.get('t') === '1',
+  startsOnly: query.get('ts') === '1',
   stages: query.get('st') === '1',
   stations: query.get('stn') === '1',
   hideStaffOnly: query.get('hs') === '1',
@@ -104,7 +105,7 @@ const badge = {
   roles: Object.fromEntries(STRIP_ROLES.map((k, i) =>
     [k, /^[0-9a-f]{6}$/i.test(rk[i] ?? '') ? `#${rk[i].toLowerCase()}` : ROLE_COLORS[k]])) as Record<StripRole, string>,
 };
-type BadgeFlag = 'times' | 'stages' | 'stations' | 'hideStaffOnly' | 'localNames' | 'tasks' | 'number' | 'qr' | 'hole';
+type BadgeFlag = 'times' | 'startsOnly' | 'stages' | 'stations' | 'hideStaffOnly' | 'localNames' | 'tasks' | 'number' | 'qr' | 'hole';
 // Certificate designs: the outer one draws the page (ground, frame, bands), the inner one writes on it; any of A-E
 // goes with any. event narrows the preview and the print to one event ('' for all).
 const CERT_DESIGNS = ['A', 'B', 'C', 'D', 'E'] as const;
@@ -170,6 +171,7 @@ function syncUrl() {
     q.set('o', badge.land ? 'l' : 'p');
     q.set('l', badge.lang);
     if (badge.times) q.set('t', '1');
+    if (badge.startsOnly) q.set('ts', '1');
     if (badge.stages) q.set('st', '1');
     if (badge.stations) q.set('stn', '1');
     if (badge.hideStaffOnly) q.set('hs', '1');
@@ -541,7 +543,7 @@ function cards(w: Wcif, people: Person[]): HTMLElement[][] {
     accent: brand.accent, logo: brand.logo, logoOnBand: brand.onBand, watermark: brand.backdrop, roles: badge.roles, rowFill: badge.rowFill,
   };
   // Stage-tinted rows need the stages even when their dots are not asked for.
-  const options = { times: badge.times, stages: badge.stages || badge.rowFill === 'stage', stations: badge.stations, hideStaffOnly: badge.hideStaffOnly, localNames: badge.localNames };
+  const options = { times: badge.times, startsOnly: badge.startsOnly, stages: badge.stages || badge.rowFill === 'stage', stations: badge.stations, hideStaffOnly: badge.hideStaffOnly, localNames: badge.localNames };
   return people.map((p) => {
     const flag = flags?.[p.countryIso2];
     const title = badge.titles.find((x) => x.en.trim() && x.ids.includes(p.wcaUserId));
@@ -737,11 +739,15 @@ function badgeView(w: Wcif, people: Person[]) {
     text(t('qrLink'), badge.qrLink, liveUrl(w.id, scoretaking), (v) => { badge.qrLink = v; }),
     text(t('qrText'), badge.qrText, t('qrTextHint'), (v) => { badge.qrText = v; }),
   );
+  // The starts alone, under the times and only with them.
+  const starts = flag('startsOnly', 'startsOnly');
+  starts.classList.add('sub');
+  starts.hidden = !badge.times;
   const checks = el('div', 'checks');
   checks.append(
     box(t('card'), flag('hole', 'showHole')),
     box(t('faceFront'), flag('number', 'showNumber'), flag('localNames', 'showLocal')),
-    box(t('faceBack'), flag('times', 'showTimes'), ...(multiStage(w) ? [flag('stages', 'showStages')] : []), flag('stations', 'showStations'),
+    box(t('faceBack'), flag('times', 'showTimes', (v) => { starts.hidden = !v; }), starts, ...(multiStage(w) ? [flag('stages', 'showStages')] : []), flag('stations', 'showStations'),
       flag('tasks', 'showTasks'), flag('hideStaffOnly', 'hideStaffOnly'), flag('qr', 'showQr', (v) => { qrFields.hidden = !v; })),
     box(t('roleStrips'), ...swatches.map((s) => s.l), rolesReset),
   );

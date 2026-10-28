@@ -55,20 +55,20 @@ export function groupList(groups: number[]): string {
   return out.join(',');
 }
 
-// As Badgifier's options, all off by default: times, stages and stations on the back, events the person only works
-// in left off, and the local name on the front.
-export type BadgeOptions = { times?: boolean; stages?: boolean; stations?: boolean; hideStaffOnly?: boolean; localNames?: boolean };
+// As Badgifier's options, all off by default: times (their starts alone with startsOnly), stages and stations on the
+// back, events the person only works in left off, and the local name on the front.
+export type BadgeOptions = { times?: boolean; startsOnly?: boolean; stages?: boolean; stations?: boolean; hideStaffOnly?: boolean; localNames?: boolean };
 
 // One row per event from the first round, in the competition's event order (the front's icons follow it; the back
 // sorts its rows by time itself), and after it one for each later round the person competes or works in, marked with
 // its number, or 'f' for the last. Each has the group ('' until groups are assigned, '–' in a round the person does
 // not compete in) and the tasks ('J 1,3', 'J 1–4 R 6' or '–'). With times, also when: from the start of the person's
-// earliest group in the round to the end of their latest ('HH:MM–HH:MM'), or the round's own times before groups are
-// assigned, with its day, in the venue's time zone. With stages, and when the competition uses more than one, where:
+// earliest group in the round to the end of their latest ('HH:MM–HH:MM', or the start alone with startsOnly), or the
+// round's own times before groups are assigned, with its day, in the venue's time zone. With stages, and when the competition uses more than one, where:
 // the stage (room) and its colour. With stations, the competing station ('' when the WCIF has none).
 export function badgeRows(
   p: Person, w: Wcif, activities: Map<number, ActivityInfo>,
-  { times = false, stages = false, stations = false, hideStaffOnly = false }: BadgeOptions = {},
+  { times = false, startsOnly = false, stages = false, stations = false, hideStaffOnly = false }: BadgeOptions = {},
 ): BadgeRow[] {
   const own = scheduleOf(p, activities);
   const showStages = stages && multiStage(w);
@@ -81,7 +81,7 @@ export function badgeRows(
     rounds.set(a.code, [...(rounds.get(a.code) ?? []), a]);
     last.set(e, Math.max(last.get(e) ?? 0, Number(r.slice(1))));
   }
-  const span = (from: string, to: string, tz: string) => (to > from ? `${clockOf(from, tz)}–${clockOf(to, tz)}` : clockOf(from, tz));
+  const span = (from: string, to: string, tz: string) => (to > from && !startsOnly ? `${clockOf(from, tz)}–${clockOf(to, tz)}` : clockOf(from, tz));
   const rows: BadgeRow[] = [];
   for (const { id } of w.events) {
     const competes = !!p.registration?.isCompeting && p.registration.eventIds.includes(id);

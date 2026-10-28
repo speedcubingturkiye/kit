@@ -111,6 +111,7 @@ label.swatch { display: flex; align-items: center; gap: 6px; font-size: 14px; fo
 .qr-fields label { display: grid; gap: 4px; font-size: 13px; }
 .qr-fields input { font: 15px var(--font); padding: 8px 10px; border: 1px solid var(--ink); min-width: 0; }
 label.check { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
+label.check.sub { padding-left: 22px; }
 .check input { width: 16px; height: 16px; margin: 0; accent-color: var(--ink); }
 .check input:disabled + span { color: var(--ink-2); }
 select:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
