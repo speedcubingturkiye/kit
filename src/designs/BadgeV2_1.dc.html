@@ -536,17 +536,19 @@ class Component extends DCLogic {
       const rowOf = (r) => { const bg = fill === 'zebra' ? (r.zi % 2 === 0 ? '#f0f0ee' : '') : fill === 'stage' ? tintOf(r.stageColor) : ''; return bg ? Object.assign({}, rowStyle, { background: bg }) : rowStyle; };
       const evCell = { display: 'flex', alignItems: 'center', gap: mm(rf * 0.5), minWidth: 0, whiteSpace: 'nowrap' };
       const iconSt = { display: 'block', flex: 'none', width: mm(iconR), height: mm(iconR), color: '#1a1a1a' };
-      const evText = { fontWeight: 600 };
+      // Text boxes trimmed to capitals and baseline (text-box), so that centring them centres the capitals and
+      // figures: untrimmed, a 5-7 px font's rounded ascent and descent left text up to 1 px above centre.
+      const evText = { fontWeight: 600, textBox: 'trim-both cap alphabetic' };
       // A label longer than its column (Face Turning Octahedron on small cards) is set smaller to fit.
       const evW = gi - colTime - colGrp - colStn - (showTask ? colTask : 0) - iconR - rf * 0.5 - (hasStage && !hasTime ? rf * 1.05 : 0);
       const fitLabel = (t) => (tw(t, W600) * rf <= evW ? evText : Object.assign({}, evText, { fontSize: mm(evW / tw(t, W600)) }));
       // In a narrow table a long name that would drop below three quarters of the row text uses its short form.
       const labelOf = (r) => { const t = (EVN[r.ev] || r.ev) + roundOf(r); return SHORT[r.ev] && tw(t, W600) * rf * 0.75 > evW ? SHORT[r.ev] + roundOf(r) : t; };
-      const cSt = { textAlign: 'center', fontWeight: 800, fontSize: mm(rf * 1.12) };
+      const cSt = { textAlign: 'center', fontWeight: 800, fontSize: mm(rf * 1.12), textBox: 'trim-both cap alphabetic' };
       // A task list too wide for its column goes on more lines, set smaller until they fit the column and the row.
       // Tasks stay whole unless breaking one after a comma, into lines of even width, makes the text a fifth larger.
       const taskCell = (task) => {
-        const st = { textAlign: 'center', fontWeight: task === '–' ? 400 : 800, color: task === '–' ? '#888888' : RED_TEXT };
+        const st = { textAlign: 'center', fontWeight: task === '–' ? 400 : 800, color: task === '–' ? '#888888' : RED_TEXT, textBox: 'trim-both cap alphabetic' };
         const avail = colTask - rf * 0.3;
         if (TW(task) * rf <= avail) return { t: st, task: task };
         const parts = task.split(' ');
@@ -583,9 +585,11 @@ class Component extends DCLogic {
         const b = split.f > whole.f * 1.2 ? split : whole;
         return { t: Object.assign(st, { fontSize: mm(b.f), lineHeight: 1.05, whiteSpace: 'pre' }), task: b.lines.join('\n') };
       };
-      // The time cell with its stage dot, and the day headings.
-      const tmStyle = { display: 'flex', alignItems: 'center', gap: mm(rf * 0.35), fontWeight: 700, fontSize: mm(rf), whiteSpace: 'nowrap' };
-      const dotStyle = { flex: 'none', width: mm(rf * 0.7), height: mm(rf * 0.7), borderRadius: '50%' };
+      // The time cell with its stage dot, and the day headings. In the time cell the dot stands on the baseline, as high
+      // as the figures; before an event (no times) it is centred with the icon.
+      const tmStyle = { fontWeight: 700, fontSize: mm(rf), whiteSpace: 'nowrap', textBox: 'trim-both cap alphabetic' };
+      const dotStyle = hasTime ? { display: 'inline-block', width: mm(rf * 0.7), height: mm(rf * 0.7), borderRadius: '50%', marginRight: mm(rf * 0.35) }
+        : { flex: 'none', width: mm(rf * 0.7), height: mm(rf * 0.7), borderRadius: '50%' };
       const dayRowStyle = { display: 'flex', alignItems: 'flex-end', height: mm(rowH), boxSizing: 'border-box', paddingBottom: mm(rowH * 0.14), borderBottom: '0.25mm solid #e2e2e0', fontSize: mm(hTr), lineHeight: 1, fontWeight: 700, letterSpacing: '0.08em', color: '#555555', whiteSpace: 'nowrap' };
       if (pad) Object.assign(dayRowStyle, { paddingLeft: mm(pad), paddingRight: mm(pad) });
       const DAYS_TR = ['PAZAR', 'PAZARTESİ', 'SALI', 'ÇARŞAMBA', 'PERŞEMBE', 'CUMA', 'CUMARTESİ'];
