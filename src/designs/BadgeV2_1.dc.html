@@ -208,7 +208,13 @@ class Component extends DCLogic {
 
     // Real data comes in as props (person, comp, qr); without them the samples above are shown.
     const P = this.props.person || PEOPLE[pid] || PEOPLE['Yarışmacı'];
-    const R = ROLES[P.role] || ROLES.competitor;
+    // A title of the kit's own (props.person.title: { en, tr, bg }) stands in for the role: its words in capitals and
+    // its colour, with ink or white type, whichever stands out more.
+    const T = P.title && P.title.en && /^#[0-9a-f]{6}$/i.test(P.title.bg || '') ? P.title : null;
+    const R = T ? {
+      en: T.en.toLocaleUpperCase('en-US'), tr: T.tr ? T.tr.toLocaleUpperCase('tr-TR') : T.en.toLocaleUpperCase('en-US'),
+      bg: T.bg, fg: inkOn(T.bg) ? '#1a1a1a' : '#ffffff', sub: inkOn(T.bg) ? '#3a3a3a' : '', rule: ''
+    } : ROLES[P.role] || ROLES.competitor;
     const land = w > h;
     const s = Math.min(w, h);
     const tier = s < 60 ? 1 : (s < 85 ? 2 : 3);
@@ -411,7 +417,8 @@ class Component extends DCLogic {
       g.roleTr = Object.assign({}, g.roleTr, { marginTop: mm(-fs(g.roleTr) * 0.145) });
       g.roleEn = Object.assign({}, g.roleEn, { marginBottom: mm(-fs(g.roleEn) * 0.165) });
       // English-only: one role line, its baseline pulled to the box edge like the English line it replaces.
-      if (en) {
+      // A title without Turkish words keeps one line on bilingual badges too.
+      if (en || (T && !T.tr)) {
         g.roleEn = Object.assign({}, g.roleEn, { display: 'none' });
         g.roleTr = Object.assign({}, g.roleTr, { marginBottom: mm(-fs(g.roleTr) * 0.165), marginLeft: land || !g.showNum ? 0 : mm(-fs(g.roleTr) * lsbOf(R.en)) });
       }

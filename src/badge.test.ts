@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { badgeComp, badgeLegend, badgePerson, badgeRows, dateRange, groupList, liveUrl, sheetGrid } from './badge.ts';
+import { badgeComp, badgeLegend, badgePerson, badgeRows, dateRange, groupList, liveUrl, sheetGrid, titleOf, titleParam } from './badge.ts';
 import { EVENTS } from './i18n.ts';
 import { ICONS } from './icons.ts';
 import { qrPath } from './qr.ts';
@@ -110,6 +110,17 @@ test('times and stages are options: before groups the round start, the stage onc
   assert.deepEqual(badgeRows(two.persons[0], two, acts2).map((r) => r.join('|')), ['333|2|–|||||', '222||–|||||', 'pyram||–|||||']);
   assert.deepEqual(badgeRows(two.persons[0], two, acts2, { stages: true }).map((r) => `${r[3]}|${r[5]}`), ['|Red Stage', '|Red Stage', '|Blue Stage']);
   assert.deepEqual(badgeRows(two.persons[0], two, acts2, { times: true }).map((r) => r[5]), ['', '', '']);
+});
+
+test('titles: read from and written to the address, people by WCA user id', () => {
+  const t = titleOf('PHOTOGRAPHER~FOTOĞRAFÇI~7C3AED~12.45');
+  assert.deepEqual(t, { en: 'PHOTOGRAPHER', tr: 'FOTOĞRAFÇI', color: '#7c3aed', ids: [12, 45] });
+  assert.equal(titleParam(t!), 'PHOTOGRAPHER~FOTOĞRAFÇI~7c3aed~12.45');
+  // No English words or no colour: no title. No Turkish words or no people yet: still one.
+  assert.equal(titleOf('~x~7c3aed~1'), null);
+  assert.equal(titleOf('MEDIA~~zz~1'), null);
+  assert.deepEqual(titleOf('MEDIA~~0d47a1~'), { en: 'MEDIA', tr: '', color: '#0d47a1', ids: [] });
+  assert.equal(titleParam({ en: 'A~B ', tr: '', color: '#000000', ids: [] }), 'A B~~000000~');
 });
 
 test('group lists: in order, three or more in a row as a range', () => {

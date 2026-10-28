@@ -94,6 +94,16 @@ main .wrap > *, #out > * { min-width: 0; }
 label.swatch { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; cursor: pointer; }
 .swatch input[type="color"] { width: 30px; height: 22px; padding: 1px; border: 1px solid var(--ink); background: var(--paper); cursor: pointer; }
 .checks .step { width: 28px; height: 28px; font-size: 16px; }
+.titles { margin: 0; padding: 4px 10px 10px; border: 1px solid var(--hair); display: grid; gap: 10px; justify-items: start; }
+.titles legend { padding: 0 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
+.titles .go { font-size: 13px; padding: 7px 12px; }
+.title-row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: end; }
+.title-row label { display: grid; gap: 4px; font-size: 13px; }
+.title-row input[type="text"] { flex: none; width: 190px; font-size: 15px; padding: 8px 10px; }
+.title-row input[type="color"] { width: 56px; height: 40px; padding: 2px; border: 1px solid var(--ink); background: var(--paper); cursor: pointer; }
+.chips { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 2px 2px 8px; border: 1px solid var(--hair); font-size: 13px; }
+.chip .step { width: 22px; height: 22px; font-size: 14px; border: 0; }
 .checks { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-start; }
 .checks fieldset { margin: 0; padding: 4px 10px 8px; border: 1px solid var(--hair); display: grid; gap: 4px; }
 .checks legend { padding: 0 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }

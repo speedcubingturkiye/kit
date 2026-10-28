@@ -16,7 +16,23 @@ export type BadgePerson = {
   role: string;
   rows: BadgeRow[];
   legend: [letter: string, tr: string, en: string][];
+  title?: { en: string; tr: string; bg: string };
 };
+
+// A title of the organisers' own for some people (a photographer, say), in place of their role on the badge: its
+// English and Turkish words, its colour, and the people by WCA user id. In the address as 'en~tr~rrggbb~id.id'.
+export type BadgeTitle = { en: string; tr: string; color: string; ids: number[] };
+
+export function titleOf(param: string): BadgeTitle | null {
+  const [en = '', tr = '', color = '', ids = ''] = param.split('~');
+  if (!en.trim() || !/^[0-9a-f]{6}$/i.test(color)) return null;
+  return { en: en.trim(), tr: tr.trim(), color: `#${color.toLowerCase()}`, ids: ids.split('.').map(Number).filter((n) => Number.isInteger(n) && n > 0) };
+}
+
+export function titleParam(t: BadgeTitle): string {
+  const clean = (s: string) => s.replace(/~/g, ' ').trim();
+  return [clean(t.en), clean(t.tr), t.color.slice(1), t.ids.join('.')].join('~');
+}
 
 const clockOf = (iso: string, timezone: string) =>
   new Intl.DateTimeFormat('en-GB', { timeZone: timezone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso));

@@ -2,7 +2,7 @@ import './style.css';
 import badgeA from './designs/BadgeV1_1.dc.html?dc';
 import badgeB from './designs/BadgeV2_1.dc.html?dc';
 import certDesign from './designs/SertifikaKarma.dc.html?dc';
-import { badgeComp, badgePerson, groupList, liveUrl, multiStage, sheetGrid, type BadgeLang } from './badge.ts';
+import { badgeComp, badgePerson, groupList, liveUrl, multiStage, sheetGrid, titleOf, titleParam, type BadgeLang, type BadgeTitle } from './badge.ts';
 import { certComp, certificates, signers, type Cert } from './certificate.ts';
 import { renderDesign } from './dc.ts';
 import { EVENTS, TASK_LETTER, TEXT, countryName, fill, type Lang } from './i18n.ts';
@@ -99,6 +99,8 @@ const badge = {
   rowFill: (['zebra', 'stage'].includes(query.get('rf') ?? '') ? query.get('rf') : '') as '' | 'zebra' | 'stage',
   // Room for a punch hole at the top centre, on unless unticked (cards in a sleeve need none).
   hole: query.get('h') !== '0',
+  // Titles of the organisers' own (a photographer, say) for chosen people, in place of their role (URL ut, repeated).
+  titles: query.getAll('ut').map(titleOf).filter((x): x is BadgeTitle => !!x),
   roles: Object.fromEntries(STRIP_ROLES.map((k, i) =>
     [k, /^[0-9a-f]{6}$/i.test(rk[i] ?? '') ? `#${rk[i].toLowerCase()}` : ROLE_COLORS[k]])) as Record<StripRole, string>,
 };
@@ -180,6 +182,7 @@ function syncUrl() {
     if (badge.split) q.set('tb', badge.split);
     if (badge.rowFill) q.set('rf', badge.rowFill);
     if (!badge.hole) q.set('h', '0');
+    for (const x of badge.titles) q.append('ut', titleParam(x));
     if (STRIP_ROLES.some((k) => badge.roles[k] !== ROLE_COLORS[k])) q.set('rk', STRIP_ROLES.map((k) => badge.roles[k].slice(1)).join('-'));
   }
   if (view !== 'people' && brand.accent !== SCTR_RED) q.set('cc', brand.accent.slice(1));
@@ -541,7 +544,9 @@ function cards(w: Wcif, people: Person[]): HTMLElement[][] {
   const options = { times: badge.times, stages: badge.stages || badge.rowFill === 'stage', stations: badge.stations, hideStaffOnly: badge.hideStaffOnly, localNames: badge.localNames };
   return people.map((p) => {
     const flag = flags?.[p.countryIso2];
-    const props = { ...shared, person: badgePerson(p, w, activities, badge.lang, flag ? svgUri(flag) : '', options) };
+    const title = badge.titles.find((x) => x.en.trim() && x.ids.includes(p.wcaUserId));
+    const person = badgePerson(p, w, activities, badge.lang, flag ? svgUri(flag) : '', options);
+    const props = { ...shared, person: title ? { ...person, title: { en: title.en, tr: title.tr, bg: title.color } } : person };
     return (['front', 'back'] as const).map((face) => renderDesign(DESIGNS[badge.design], { ...props, face }));
   });
 }
@@ -740,12 +745,80 @@ function badgeView(w: Wcif, people: Person[]) {
       flag('tasks', 'showTasks'), flag('hideStaffOnly', 'hideStaffOnly'), flag('qr', 'showQr', (v) => { qrFields.hidden = !v; })),
     box(t('roleStrips'), ...swatches.map((s) => s.l), rolesReset),
   );
+  // Titles of the organisers' own: the words in English and Turkish, a colour, and the people, found by name. Adding
+  // someone shows their badge; WCIF photographers (staff-photo) can be added in one go.
+  const titles = el('fieldset', 'titles');
+  const names = document.createElement('datalist');
+  names.id = 'title-people';
+  const nameOf = (p: Person) => (p.registrantId == null ? p.name : `${p.registrantId} · ${p.name}`);
+  names.append(...people.map((p) => new Option(nameOf(p))));
+  const photographers = people.filter((p) => (p.assignments ?? []).some((a) => a.assignmentCode === 'staff-photo'));
+  const showTitles = () => {
+    const add = el('button', 'go', t('titleAdd'));
+    add.setAttribute('type', 'button');
+    add.addEventListener('click', () => {
+      badge.titles.push({ en: 'PHOTOGRAPHER', tr: 'FOTOĞRAFÇI', color: '#7c3aed', ids: [] });
+      showTitles();
+      draw();
+    });
+    titles.replaceChildren(el('legend', '', t('titles')), names, ...badge.titles.map(titleRow), add);
+  };
+  const titleRow = (x: BadgeTitle) => {
+    const row = el('div', 'title-row');
+    const words = (label: string, value: string, set: (v: string) => void) => {
+      const l = el('label');
+      const i = document.createElement('input');
+      i.type = 'text';
+      i.value = value;
+      i.spellcheck = false;
+      i.addEventListener('input', () => { set(i.value.replace(/~/g, '')); soon(); });
+      l.append(el('span', '', label), i);
+      return l;
+    };
+    const color = document.createElement('input');
+    color.type = 'color';
+    color.value = x.color;
+    color.addEventListener('input', () => { x.color = color.value; soon(); });
+    const colorLabel = el('label');
+    colorLabel.append(el('span', '', t('color')), color);
+    const who = document.createElement('input');
+    who.type = 'text';
+    who.setAttribute('list', names.id);
+    who.placeholder = t('titleWho');
+    who.addEventListener('change', () => {
+      const p = people.find((q) => nameOf(q) === who.value.trim() || q.name === who.value.trim());
+      if (!p) return;
+      if (!x.ids.includes(p.wcaUserId)) x.ids.push(p.wcaUserId);
+      previewAt = people.indexOf(p);
+      showTitles();
+      draw();
+    });
+    const whoLabel = el('label');
+    whoLabel.append(el('span', '', t('titlePeople')), who);
+    const missing = photographers.filter((p) => !x.ids.includes(p.wcaUserId));
+    const photo = el('button', 'go', fill(t('titlePhotographers'), { n: missing.length }));
+    photo.setAttribute('type', 'button');
+    photo.hidden = !missing.length;
+    photo.addEventListener('click', () => { x.ids.push(...missing.map((p) => p.wcaUserId)); showTitles(); draw(); });
+    const remove = stepButton('×', t('titleRemove'), () => { badge.titles = badge.titles.filter((y) => y !== x); showTitles(); draw(); });
+    const chips = el('div', 'chips');
+    for (const id of x.ids) {
+      const p = people.find((q) => q.wcaUserId === id);
+      if (!p) continue;
+      const chip = el('span', 'chip', p.name);
+      chip.append(stepButton('×', t('titleUnassign'), () => { x.ids = x.ids.filter((y) => y !== id); showTitles(); draw(); }));
+      chips.append(chip);
+    }
+    row.append(words(t('titleEn'), x.en, (v) => { x.en = v; }), words(t('titleTr'), x.tr, (v) => { x.tr = v; }), colorLabel, whoLabel, photo, remove, chips);
+    return row;
+  };
+  showTitles();
   const go = el('button', 'go', t('print'));
   go.setAttribute('type', 'button');
   go.addEventListener('click', () => printBadges(w, people));
   opts.append(...brandFields(draw), go);
   draw();
-  return [opts, checks, qrFields, notes, nav, preview];
+  return [opts, checks, qrFields, titles, notes, nav, preview];
 }
 
 // A6 and A7 go on A4 sheets to print at home; the other sizes go to the print shop as single cards with bleed.
