@@ -95,6 +95,8 @@ const badge = {
   qrText: query.get('qt') ?? '',
   // The back's schedule as one table or two side by side; '' leaves it to the design (two when one does not fit).
   split: (['one', 'two'].includes(query.get('tb') ?? '') ? query.get('tb') : '') as '' | 'one' | 'two',
+  // The back's rows plain (stage dots when stages are shown), every other one grey, or tinted with their stage.
+  rowFill: (['zebra', 'stage'].includes(query.get('rf') ?? '') ? query.get('rf') : '') as '' | 'zebra' | 'stage',
   // Room for a punch hole at the top centre, on unless unticked (cards in a sleeve need none).
   hole: query.get('h') !== '0',
   roles: Object.fromEntries(STRIP_ROLES.map((k, i) =>
@@ -176,6 +178,7 @@ function syncUrl() {
     if (badge.qrLink) q.set('ql', badge.qrLink);
     if (badge.qrText) q.set('qt', badge.qrText);
     if (badge.split) q.set('tb', badge.split);
+    if (badge.rowFill) q.set('rf', badge.rowFill);
     if (!badge.hole) q.set('h', '0');
     if (STRIP_ROLES.some((k) => badge.roles[k] !== ROLE_COLORS[k])) q.set('rk', STRIP_ROLES.map((k) => badge.roles[k].slice(1)).join('-'));
   }
@@ -532,9 +535,10 @@ function cards(w: Wcif, people: Person[]): HTMLElement[][] {
   const shared = {
     ...cardSize(), lang: badge.lang, comp: badgeComp(w, badge.lang), icons: ICON_URIS,
     qr: badge.qr ? qrOf(w).path : false, qrCaption: badge.qrText, tasks: badge.tasks, number: badge.number, split: badge.split, hole: badge.hole,
-    accent: brand.accent, logo: brand.logo, logoOnBand: brand.onBand, watermark: brand.backdrop, roles: badge.roles,
+    accent: brand.accent, logo: brand.logo, logoOnBand: brand.onBand, watermark: brand.backdrop, roles: badge.roles, rowFill: badge.rowFill,
   };
-  const options ={ times: badge.times, stages: badge.stages, stations: badge.stations, hideStaffOnly: badge.hideStaffOnly, localNames: badge.localNames };
+  // Stage-tinted rows need the stages even when their dots are not asked for.
+  const options = { times: badge.times, stages: badge.stages || badge.rowFill === 'stage', stations: badge.stations, hideStaffOnly: badge.hideStaffOnly, localNames: badge.localNames };
   return people.map((p) => {
     const flag = flags?.[p.countryIso2];
     const props = { ...shared, person: badgePerson(p, w, activities, badge.lang, flag ? svgUri(flag) : '', options) };
@@ -680,6 +684,9 @@ function badgeView(w: Wcif, people: Person[]) {
     select(t('cardLang'), [['en', t('cardEn')], ['tr-en', t('cardTrEn')]], badge.lang, (v) => { badge.lang = v as BadgeLang; draw(); }),
     select(t('backTable'), [['', t('tableAuto')], ['one', t('tableOne')], ['two', t('tableTwo')]], badge.split,
       (v) => { badge.split = v as typeof badge.split; draw(); }),
+    // A stage tint only where there is more than one stage.
+    select(t('rowFill'), [['', t('fillNone')], ['zebra', t('fillZebra')], ...(multiStage(w) ? [['stage', t('fillStage')] as [string, string]] : [])],
+      badge.rowFill, (v) => { badge.rowFill = v as typeof badge.rowFill; draw(); }),
   );
   // Badgifier's options, by face; stages only when the competition uses more than one. The QR's own link and caption
   // come next when the QR is on.

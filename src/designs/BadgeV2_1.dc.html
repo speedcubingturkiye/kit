@@ -444,9 +444,10 @@ class Component extends DCLogic {
       const tableH = contentH - legendH - bottomH - m * 0.8 - m * 0.3 - 1;
       // The table's lines: the rows, with a day heading before each day's first row when the rows span days.
       const items = [];
+      let zi = 0;
       backRows.forEach((r) => {
-        if (multiDay && r.day && (!items.length || items[items.length - 1].day !== r.day)) items.push({ day: r.day, heading: true });
-        items.push(r);
+        if (multiDay && r.day && (!items.length || items[items.length - 1].day !== r.day)) { items.push({ day: r.day, heading: true }); zi = 0; }
+        items.push(Object.assign({}, r, { zi: zi++ }));
       });
       let groups = [items];
       // Two tables side by side: on landscape cards without a QR (over 5 events), and on any card whose events
@@ -508,6 +509,11 @@ class Component extends DCLogic {
       const hC = Object.assign({}, hEv, { alignItems: 'center', textAlign: 'center' });
       const hEn = { fontSize: mm(hTr * 0.78), fontWeight: 600, color: '#555555' };
       const rowStyle = { display: 'grid', gridTemplateColumns: cols, alignItems: 'center', height: mm(rowH), boxSizing: 'border-box', borderBottom: '0.25mm solid #e2e2e0', fontSize: mm(rf), lineHeight: 1 };
+      // Row fills (props.rowFill): every other row light grey from each day's first ('zebra'), or a light tint of the
+      // row's stage colour ('stage'), which then needs no dot.
+      const fill = this.props.rowFill;
+      const tintOf = (c) => (/^#[0-9a-f]{6}$/i.test(c || '') ? '#' + [1, 3, 5].map((i) => Math.round(255 - (255 - parseInt(c.slice(i, i + 2), 16)) * 0.25).toString(16).padStart(2, '0')).join('') : '');
+      const rowOf = (r) => { const bg = fill === 'zebra' ? (r.zi % 2 === 0 ? '#f0f0ee' : '') : fill === 'stage' ? tintOf(r.stageColor) : ''; return bg ? Object.assign({}, rowStyle, { background: bg }) : rowStyle; };
       const evCell = { display: 'flex', alignItems: 'center', gap: mm(rf * 0.5), minWidth: 0, whiteSpace: 'nowrap' };
       const iconSt = { display: 'block', flex: 'none', width: mm(iconR), height: mm(iconR), color: '#1a1a1a' };
       const evText = { fontWeight: 600 };
@@ -589,12 +595,12 @@ class Component extends DCLogic {
           station: r.station,
           showTask: showTask,
           hasTime: hasTime,
-          hasStage: hasStage,
+          hasStage: hasStage && fill !== 'stage',
           tm: showRange ? Object.assign({}, tmStyle, { fontStretch: '85%' }) : tmStyle,
           time: showRange ? r.time : r.time.split('–')[0],
           dot: Object.assign({}, dotStyle, { background: r.stageColor || 'transparent' }),
-          dotEv: hasStage && !hasTime,
-          row: rowStyle,
+          dotEv: hasStage && !hasTime && fill !== 'stage',
+          row: rowOf(r),
           evCell: evCell,
           evText: fitLabel(labelOf(r)),
           c: cSt,
