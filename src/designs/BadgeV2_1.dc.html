@@ -445,7 +445,14 @@ class Component extends DCLogic {
       const tableW = (sideRow ? w - rW : w) - m - padR;
       const legendChars = (showTask ? (en ? 30 : showQR ? 62 : 33) + legendExtra.reduce((n, x) => n + 3 + (en ? x.en : showQR ? x.both : x.tr).length, 0) : 0) + legendStages.reduce((n, x) => n + 3 + x.name.length, 0);
       const lsFit = Math.max(1.6, Math.min(ls, (tableW * 1.9) / (legendChars * 0.55)));
-      const legendLines = Math.ceil((legendChars * 0.55 * lsFit) / tableW);
+      // Flex-wrap breaks the legend between items only: a letter (weight 800) or a dot, its margin and the words
+      // (weight 400, within 0.98 of the weight-600 widths), 2.4 mm apart. It takes the lines that wrapping needs, or
+      // the estimate's if more.
+      const legendItems = (showTask ? [['J', en ? 'Judge' : showQR ? 'Hakem · Judge' : 'Hakem'], ['S', en ? 'Scrambler' : showQR ? 'Karıştırıcı · Scrambler' : 'Karıştırıcı'],
+        ['R', en ? 'Runner' : showQR ? 'Taşıyıcı · Runner' : 'Taşıyıcı']].concat(legendExtra.map((x) => [x.k, en ? x.en : showQR ? x.both : x.tr])) : [])
+        .map(([k, x]) => tw(k, W800) + 0.45 + tw(x, W600) * 0.98).concat(legendStages.map((x) => 1.2 + tw(x.name, W600) * 0.98));
+      const wrapLines = legendItems.reduce((a, iw) => (a.x + 2.4 + iw * lsFit > tableW ? { n: a.n + 1, x: iw * lsFit } : { n: a.n, x: a.x + 2.4 + iw * lsFit }), { n: 0, x: Infinity }).n;
+      const legendLines = Math.max(Math.ceil((legendChars * 0.55 * lsFit) / tableW), wrapLines);
       const legendH = legendLines ? legendLines * lsFit * 1.25 + (legendLines - 1) * 0.6 + (showQR && !sideRow ? m * 0.4 : m * 0.7) : 0;
       const bottomH = showQR && !sideRow ? (qrOn ? qr + ls * 2.4 : clamp(qr * 0.5, 6, 12) * 1.1) + m * 0.8 : 0;
       const tableH = contentH - legendH - bottomH - m * 0.8 - m * 0.3 - 1;
@@ -475,8 +482,9 @@ class Component extends DCLogic {
       const perGroup = Math.max(1, ...groups.map((x) => x.length));
       const showEn = tier >= 2;
       const headU = showEn && !en ? 1.9 : 1.15;
-      // One table on request may need rows lower than 2.8 mm to fit.
-      const rowH = Math.max(this.props.split === 'one' ? 0 : 2.8, Math.min(clamp(s * 0.1, 4.4, 8.6), tableH / (perGroup + headU)));
+      // The rows share the table's height, up to the size's own row height. 2.8 mm only decides the split: one table on
+      // request, or two that still do not fit (many later rounds on a small card), take lower rows.
+      const rowH = Math.min(clamp(s * 0.1, 4.4, 8.6), tableH / (perGroup + headU));
       const rf0 = rowH * 0.5;
       const hTr0 = clamp(rf0 * 0.72, 1.6, 2.9);
       // Task lists' widths in em (weight 800; the width tables have no comma or dash).
