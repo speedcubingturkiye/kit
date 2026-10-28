@@ -33,12 +33,43 @@ const w = parseWcif(JSON.stringify({
 const acts = indexActivities(w);
 
 test('rows: first-round group and tasks per event; blank group until assigned, dash where not competing', () => {
-  assert.deepEqual(badgeRows(w.persons[0], w, acts), [['333', '2', 'J 1', '', '', '', '', ''], ['pyram', '', 'J 1 S 1', '', '', '', '', '']]);
+  // Zeynep also judges the 3x3 final (round 2 of 2), which gets a row of its own marked 'f'.
+  assert.deepEqual(badgeRows(w.persons[0], w, acts), [
+    ['333', '2', 'J 1', '', '', '', '', ''], ['333', '–', 'J 1', '', '', '', '', '', 'f'], ['pyram', '', 'J 1 S 1', '', '', '', '', '']]);
   assert.deepEqual(badgeRows(w.persons[1], w, acts), [['333', '–', 'J 1,2', '', '', '', '', '']]);
   assert.deepEqual(badgeRows(w.persons[2], w, acts), []);
-  // With times: the person's earliest own group in the round (judging group 1 before competing in group 2).
-  assert.deepEqual(badgeRows(w.persons[0], w, acts, { times: true }),
-    [['333', '2', 'J 1', '10:00', '2026-10-31', '', '', ''], ['pyram', '', 'J 1 S 1', '12:00', '2026-10-31', '', '', '']]);
+  // With times: from the person's earliest own group in the round (judging group 1 before competing in group 2) to
+  // the end of their latest; these groups have no length, so a group alone shows its start.
+  assert.deepEqual(badgeRows(w.persons[0], w, acts, { times: true }), [
+    ['333', '2', 'J 1', '10:00–10:30', '2026-10-31', '', '', ''], ['333', '–', 'J 1', '10:00', '2026-11-01', '', '', '', 'f'],
+    ['pyram', '', 'J 1 S 1', '12:00', '2026-10-31', '', '', '']]);
+});
+
+test('later rounds and the person\'s own times: a row for each round they are in, from their first group to their last', () => {
+  const g = (id: number, code: string, start: string, end: string) => ({ id, activityCode: code, startTime: start, endTime: end });
+  const r3 = parseWcif(JSON.stringify({
+    formatVersion: '1.1', id: 'Rounds2026', name: 'Rounds 2026', events: [{ id: '333' }],
+    schedule: {
+      startDate: '2026-10-31', numberOfDays: 1,
+      venues: [{ id: 1, name: 'V', timezone: 'Europe/Istanbul', rooms: [{ id: 1, name: 'Ana sahne', color: '#e30a17', activities: [
+        { ...g(10, '333-r1', '2026-10-31T07:00:00Z', '2026-10-31T07:40:00Z'),
+          childActivities: [g(11, '333-r1-g1', '2026-10-31T07:00:00Z', '2026-10-31T07:20:00Z'), g(12, '333-r1-g2', '2026-10-31T07:20:00Z', '2026-10-31T07:40:00Z')] },
+        { ...g(20, '333-r2', '2026-10-31T11:00:00Z', '2026-10-31T11:30:00Z'), childActivities: [g(21, '333-r2-g1', '2026-10-31T11:00:00Z', '2026-10-31T11:30:00Z')] },
+        { ...g(30, '333-r3', '2026-10-31T13:00:00Z', '2026-10-31T13:30:00Z'), childActivities: [g(31, '333-r3-g1', '2026-10-31T13:00:00Z', '2026-10-31T13:30:00Z')] },
+      ] }] }],
+    },
+    persons: [
+      { registrantId: 1, name: 'Ada Su', wcaUserId: 1, wcaId: null, countryIso2: 'TR', roles: [], registration: reg(['333']),
+        assignments: [as(12, 'competitor'), as(11, 'staff-judge'), as(21, 'staff-judge'), as(31, 'competitor')] },
+      { registrantId: 2, name: 'Can Ay', wcaUserId: 2, wcaId: null, countryIso2: 'TR', roles: [], registration: reg(['333']), assignments: [] },
+    ],
+  }));
+  const acts3 = indexActivities(r3);
+  assert.deepEqual(badgeRows(r3.persons[0], r3, acts3, { times: true }).map((r) => [r[1], r[2], r[3], r[8] ?? '']), [
+    ['2', 'J 1', '10:00–10:40', ''], ['–', 'J 1', '14:00–14:30', '2'], ['1', '–', '16:00–16:30', 'f']]);
+  // Rounds the person only works in go with the option; before groups, the round's own times.
+  assert.deepEqual(badgeRows(r3.persons[0], r3, acts3, { hideStaffOnly: true }).map((r) => r[8] ?? ''), ['', 'f']);
+  assert.deepEqual(badgeRows(r3.persons[1], r3, acts3, { times: true }).map((r) => r.slice(1, 4)), [['', '–', '10:00–10:40']]);
 });
 
 test('stations, events the person only works in, local names', () => {

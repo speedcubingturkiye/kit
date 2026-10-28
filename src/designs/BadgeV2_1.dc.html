@@ -225,10 +225,11 @@ class Component extends DCLogic {
     const given = parts.length > 1 ? parts.slice(0, -1).join(' ') : latin;
     const idStr = String(P.id);
     const hasId = !!P.wcaId;
-    const rows = P.rows.map((r) => ({ ev: r[0], grp: r[1], task: r[2], time: r[3] || '', day: r[4] || '', stage: r[5] || '', stageColor: r[6] || '', station: r[7] || '' }));
+    const rows = P.rows.map((r) => ({ ev: r[0], grp: r[1], task: r[2], time: r[3] || '', day: r[4] || '', stage: r[5] || '', stageColor: r[6] || '', station: r[7] || '', round: r[8] || '' }));
     // When and where (props.person.rows[3..6] from the kit: time, day, stage and its colour). The time column shows
     // when any row has a time, a stage dot before the time when any row has a stage (the legend names the stages),
-    // and day headings when the rows span days.
+    // and day headings when the rows span days. A later round's row (props.person.rows[8]: its number, or 'f' for the
+    // final) is on the back only.
     const hasTime = rows.some((r) => r.time);
     const hasStage = rows.some((r) => r.stage);
     const hasStation = rows.some((r) => r.station);
@@ -245,7 +246,7 @@ class Component extends DCLogic {
     // Task letters other than J, S and R that this badge uses (props.person.legend: letter, Turkish, English); the
     // legend adds them after the three it always explains.
     const legendExtra = (P.legend || []).map((x) => ({ k: x[0], tr: x[1], en: x[2], both: x[1] + ' · ' + x[2] }));
-    const evs = rows.filter((r) => r.grp !== '–').map((r) => r.ev);
+    const evs = rows.filter((r) => !r.round && r.grp !== '–').map((r) => r.ev);
     // Events not drawn here take the kit's icon (props.icons: event id -> image URI), else the 3x3 one.
     const iconOf = (e) => ICON[e] || ((this.props.icons || {})[e] ? ['', 'nonzero', this.props.icons[e]] : ICON['333']);
 
@@ -476,14 +477,23 @@ class Component extends DCLogic {
       // The time, group, station and task columns. The station column is wide enough for the numbers and the
       // heading (MASA, or STATION on English badges); the task column grows for long task lists, up to 30% of the
       // table.
-      const fixed = [hasTime ? Math.max(rf0 * 3.3, 7.5) + (hasStage ? rf0 * 1.05 : 0) : 0, Math.max(rf0 * 3.4, 7) * (en ? 1.12 : 1),
+      // The kit's times are the person's own, 'HH:MM–HH:MM': set 85% wide (0.87 of the measured width), the column fits
+      // the widest, or the starts alone when the ranges would shrink the table by more than 15%.
+      const ranged = hasTime && backRows.some((r) => r.time.indexOf('–') > 0);
+      const timeCol = (range) => (hasTime ? Math.max(rf0 * (range ? Math.max(...backRows.map((r) => tw(r.time, W800))) * 0.87 + 0.3 : 3.3), 7.5) + (hasStage ? rf0 * 1.05 : 0) : 0);
+      const others = [Math.max(rf0 * 3.4, 7) * (en ? 1.12 : 1),
         hasStation ? Math.max(rf0 * 2.8, (en ? 7.6 : 5.6) * hTr0 * 0.75) : 0, showTask ? Math.max(rf0 * 3.8, 8, Math.min((taskW + 0.3) * rf0, gw * 0.3)) : 0];
+      // A later round's row names it after the event: R2, R3, or Final for the last.
+      const roundOf = (r) => (!r.round ? '' : r.round === 'f' ? ' Final' : ' R' + r.round);
       const SHORT = { fto: 'FTO', '333oh': 'OH', pyram: 'Pyra', sq1: 'SQ1', minx: 'Mega', '333bf': '3BLD', '444bf': '4BLD', '555bf': '5BLD', '333mbf': 'MBLD', '333fm': 'FMC' };
       // With times, stages or stations a narrow table can leave the event column less than its heading (110% wide,
       // 0.08em apart) and the short event names need. The text, the icons and the columns then shrink together.
-      const evNeed = Math.max(rowH * 0.6 + rf0 * (hasStage && !hasTime ? 1.55 : 0.5) + rf0 * 0.85 * Math.max(...backRows.map((r) => tw(SHORT[r.ev] || EVN[r.ev] || r.ev, W600))),
+      const evNeed = Math.max(rowH * 0.6 + rf0 * (hasStage && !hasTime ? 1.55 : 0.5) + rf0 * 0.85 * Math.max(...backRows.map((r) => tw((SHORT[r.ev] || EVN[r.ev] || r.ev) + roundOf(r), W600))),
         (tw(en ? 'EVENT' : 'BRANŞ', W800) * 1.1 + 0.4) * hTr0);
-      const k = hasTime || hasStage || hasStation ? Math.min(1, gw / (fixed.reduce((a, b) => a + b, 0) + evNeed)) : 1;
+      const kOf = (range) => (hasTime || hasStage || hasStation ? Math.min(1, gw / ([timeCol(range)].concat(others).reduce((a, b) => a + b, 0) + evNeed)) : 1);
+      const showRange = ranged && kOf(true) >= kOf(false) * 0.85;
+      const fixed = [timeCol(showRange)].concat(others);
+      const k = kOf(showRange);
       const [colTime, colGrp, colStn, colTask] = fixed.map((x) => x * k);
       const rf = rf0 * k;
       const iconR = rowH * 0.6 * k;
@@ -505,7 +515,7 @@ class Component extends DCLogic {
       const evW = gw - colTime - colGrp - colStn - (showTask ? colTask : 0) - iconR - rf * 0.5 - (hasStage && !hasTime ? rf * 1.05 : 0);
       const fitLabel = (t) => (tw(t, W600) * rf <= evW ? evText : Object.assign({}, evText, { fontSize: mm(evW / tw(t, W600)) }));
       // In a narrow table a long name that would drop below three quarters of the row text uses its short form.
-      const labelOf = (e) => { const t = EVN[e] || e; return SHORT[e] && tw(t, W600) * rf * 0.75 > evW ? SHORT[e] : t; };
+      const labelOf = (r) => { const t = (EVN[r.ev] || r.ev) + roundOf(r); return SHORT[r.ev] && tw(t, W600) * rf * 0.75 > evW ? SHORT[r.ev] + roundOf(r) : t; };
       const cSt = { textAlign: 'center', fontWeight: 800, fontSize: mm(rf * 1.12) };
       // A task list too wide for its column goes on more lines, set smaller until they fit the column and the row.
       // Tasks stay whole unless breaking one after a comma, into lines of even width, makes the text a fifth larger.
@@ -580,20 +590,20 @@ class Component extends DCLogic {
           showTask: showTask,
           hasTime: hasTime,
           hasStage: hasStage,
-          tm: tmStyle,
-          time: r.time,
+          tm: showRange ? Object.assign({}, tmStyle, { fontStretch: '85%' }) : tmStyle,
+          time: showRange ? r.time : r.time.split('–')[0],
           dot: Object.assign({}, dotStyle, { background: r.stageColor || 'transparent' }),
           dotEv: hasStage && !hasTime,
           row: rowStyle,
           evCell: evCell,
-          evText: fitLabel(labelOf(r.ev)),
+          evText: fitLabel(labelOf(r)),
           c: cSt,
           ...taskCell(r.task),
           icon: iconSt,
           d: iconOf(r.ev)[0],
           fr: iconOf(r.ev)[1],
           src: iconOf(r.ev)[2] || '',
-          label: labelOf(r.ev),
+          label: labelOf(r),
           grp: r.grp
         }))
       }));

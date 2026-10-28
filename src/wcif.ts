@@ -33,8 +33,8 @@ export type Wcif = {
   schedule: { startDate: string; numberOfDays: number; venues: Venue[] };
 };
 
-// start and end are the round's; own is the activity's own start (a group's, for a group).
-export type ActivityInfo = { parentCode: string; code: string; start: string; end: string; own: string; timezone: string; room: string; roomColor: string };
+// start and end are the round's; own and ownEnd are the activity's own (a group's, for a group).
+export type ActivityInfo = { parentCode: string; code: string; start: string; end: string; own: string; ownEnd: string; timezone: string; room: string; roomColor: string };
 export type Role = 'delegate' | 'trainee-delegate' | 'organizer' | 'staff' | 'competitor';
 export type Task =
   | 'judge' | 'scrambler' | 'runner' | 'delegate' | 'dataentry' | 'announcer' | 'stagelead'
@@ -47,11 +47,12 @@ export type ScheduleRow = {
   start: string;
   end: string;
   timezone: string;
-  // The room of the person's competing group (else of their first assignment), and the earliest start of their own
-  // groups in the round.
+  // The room of the person's competing group (else of their first assignment), and the earliest start and latest end
+  // of their own groups in the round.
   room: string;
   roomColor: string;
   first: string;
+  last: string;
   group: number | null;
   station: number | null;
   tasks: Partial<Record<Task, number[]>>;
@@ -124,8 +125,8 @@ export function indexActivities(w: Wcif): Map<number, ActivityInfo> {
     for (const room of venue.rooms) {
       for (const a of room.activities) {
         const base = { parentCode: a.activityCode, start: a.startTime, end: a.endTime, timezone: venue.timezone, room: room.name, roomColor: room.color };
-        map.set(a.id, { ...base, code: a.activityCode, own: a.startTime });
-        for (const c of a.childActivities ?? []) map.set(c.id, { ...base, code: c.activityCode, own: c.startTime });
+        map.set(a.id, { ...base, code: a.activityCode, own: a.startTime, ownEnd: a.endTime });
+        for (const c of a.childActivities ?? []) map.set(c.id, { ...base, code: c.activityCode, own: c.startTime, ownEnd: c.endTime });
       }
     }
   }
@@ -194,6 +195,7 @@ export function scheduleOf(p: Person, activities: Map<number, ActivityInfo>): Sc
         room: act.room,
         roomColor: act.roomColor,
         first: act.own,
+        last: act.ownEnd,
         group: null,
         station: null,
         tasks: {},
@@ -201,6 +203,7 @@ export function scheduleOf(p: Person, activities: Map<number, ActivityInfo>): Sc
       rows.set(act.parentCode, row);
     }
     if (act.own < row.first) row.first = act.own;
+    if (act.ownEnd > row.last) row.last = act.ownEnd;
     const g = group?.startsWith('g') ? Number(group.slice(1)) : null;
     if (a.assignmentCode === 'competitor') {
       row.group = g;
