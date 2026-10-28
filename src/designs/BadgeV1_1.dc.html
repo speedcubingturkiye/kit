@@ -490,10 +490,11 @@ class Component extends DCLogic {
       // The time, group, station and task columns. The station column is wide enough for the numbers and the
       // heading (MASA, or STATION on English badges); the task column grows for long task lists, up to 30% of the
       // table.
-      // The kit's times are the person's own, 'HH:MM–HH:MM': set 85% wide (0.87 of the measured width), the column fits
-      // the widest, or the starts alone when the ranges would shrink the table by more than 15%.
+      // The kit's times are the person's own, 'HH:MM–HH:MM': the column fits them at full width (5.95 em at weight
+      // 700 in tabular figures) with the starts' gap after them, or the starts alone when the ranges would shrink the
+      // table by more than 15%.
       const ranged = hasTime && backRows.some((r) => r.time.indexOf('–') > 0);
-      const timeCol = (range) => (hasTime ? Math.max(rf0 * (range ? Math.max(...backRows.map((r) => tw(r.time, W800))) * 0.87 + 0.3 : 3.3), 7.5) + (hasStage ? rf0 * 1.05 : 0) : 0);
+      const timeCol = (range) => (hasTime ? Math.max(rf0 * (range ? 6.5 : 3.3), 7.5) + (hasStage ? rf0 * 1.05 : 0) : 0);
       const others = [Math.max(rf0 * 3.4, 7) * (en ? 1.12 : 1),
         hasStation ? Math.max(rf0 * 2.8, (en ? 7.6 : 5.6) * hTr0 * 0.75) : 0, showTask ? Math.max(rf0 * 3.8, 8, Math.min((taskW + 0.3) * rf0, gw * 0.3)) : 0];
       // A later round's row names it after the event: R2, R3, or Final for the last.
@@ -608,7 +609,7 @@ class Component extends DCLogic {
           showTask: showTask,
           hasTime: hasTime,
           hasStage: hasStage && fill !== 'stage',
-          tm: showRange ? Object.assign({}, tmStyle, { fontStretch: '85%' }) : tmStyle,
+          tm: tmStyle,
           time: showRange ? r.time : r.time.split('–')[0],
           dot: Object.assign({}, dotStyle, { background: r.stageColor || 'transparent' }),
           dotEv: hasStage && !hasTime && fill !== 'stage',
