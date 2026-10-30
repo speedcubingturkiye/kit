@@ -150,9 +150,10 @@ select:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
 .page:last-child { break-after: auto; }
 .page .card { position: absolute; z-index: 1; }
 .page .bleed { position: absolute; z-index: 0; }
+/* Cut lines centred on the cells' edges, so that those printed on a sheet's back fall where the front's are. */
 .page .cut { position: absolute; z-index: 2; }
-.page .cut-v { top: 0; bottom: 0; border-left: 0.25mm dashed #808080; }
-.page .cut-h { left: 0; right: 0; border-top: 0.25mm dashed #808080; }
+.page .cut-v { top: 0; bottom: 0; margin-left: -0.125mm; border-left: 0.25mm dashed #808080; }
+.page .cut-h { left: 0; right: 0; margin-top: -0.125mm; border-top: 0.25mm dashed #808080; }
 .page, .page * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 @media print {
   body { margin: 0; background: #fff; }
