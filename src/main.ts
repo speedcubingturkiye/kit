@@ -100,12 +100,16 @@ const badge = {
   rowFill: (['zebra', 'stage'].includes(query.get('rf') ?? '') ? query.get('rf') : '') as '' | 'zebra' | 'stage',
   // Room for a punch hole at the top centre, on unless unticked (cards in a sleeve need none).
   hole: query.get('h') !== '0',
+  // On A6 and A7 sheets: the cut lines between the people, on unless unticked, and a last page of the lines alone, to
+  // print on the sheets' backs and cut from there, leaving the badges clean (off unless ticked).
+  cuts: query.get('cut') !== '0',
+  cutPage: query.get('cutp') === '1',
   // Titles of the organisers' own (a photographer, say) for chosen people, in place of their role (URL ut, repeated).
   titles: query.getAll('ut').map(titleOf).filter((x): x is BadgeTitle => !!x),
   roles: Object.fromEntries(STRIP_ROLES.map((k, i) =>
     [k, /^[0-9a-f]{6}$/i.test(rk[i] ?? '') ? `#${rk[i].toLowerCase()}` : ROLE_COLORS[k]])) as Record<StripRole, string>,
 };
-type BadgeFlag = 'times' | 'startsOnly' | 'stages' | 'stations' | 'hideStaffOnly' | 'localNames' | 'tasks' | 'number' | 'qr' | 'hole';
+type BadgeFlag = 'times' | 'startsOnly' | 'stages' | 'stations' | 'hideStaffOnly' | 'localNames' | 'tasks' | 'number' | 'qr' | 'hole' | 'cuts' | 'cutPage';
 // Certificate designs: the outer one draws the page (ground, frame, bands), the inner one writes on it; any of A-E
 // goes with any. event narrows the preview and the print to one event ('' for all).
 const CERT_DESIGNS = ['A', 'B', 'C', 'D', 'E'] as const;
@@ -184,6 +188,8 @@ function syncUrl() {
     if (badge.split) q.set('tb', badge.split);
     if (badge.rowFill) q.set('rf', badge.rowFill);
     if (!badge.hole) q.set('h', '0');
+    if (!badge.cuts) q.set('cut', '0');
+    if (badge.cutPage) q.set('cutp', '1');
     for (const x of badge.titles) q.append('ut', titleParam(x));
     if (STRIP_ROLES.some((k) => badge.roles[k] !== ROLE_COLORS[k])) q.set('rk', STRIP_ROLES.map((k) => badge.roles[k].slice(1)).join('-'));
   }
@@ -652,12 +658,15 @@ function badgeView(w: Wcif, people: Person[]) {
     const { w: cw, h: ch } = cardSize();
     Object.assign(preview.dataset, { w: String(cw), h: String(ch) });
     const grid = sheetGrid(cw, ch);
+    const sheetCount = Math.ceil(people.length / (grid.cols * grid.rows));
+    sheetBox.hidden = !onSheets();
     notes.replaceChildren(
       el('p', 'out', onSheets()
-        ? fill(t('outSheets'), { n: people.length, pages: Math.ceil(people.length / (grid.cols * grid.rows)) })
+        ? fill(t('outSheets'), { n: people.length, pages: sheetCount }) + (badge.cutPage ? t('outCutPage') : '')
         : fill(t('outShop'), { n: people.length, pages: people.length * 2, w: (cw + 2 * BLEED).toLocaleString(lang), h: (ch + 2 * BLEED).toLocaleString(lang) })),
       el('p', 'hint', t(onSheets() ? 'printSheets' : 'printShop')),
     );
+    if (onSheets() && badge.cutPage) notes.append(el('p', 'hint', fill(t('printCutPage'), { pages: sheetCount })));
     if (badge.qr) {
       const q = qrOf(w);
       notes.append(el('p', 'hint', fill(t('qrNote'), { url: q.url })
@@ -743,6 +752,8 @@ function badgeView(w: Wcif, people: Person[]) {
   const starts = flag('startsOnly', 'startsOnly');
   starts.classList.add('sub');
   starts.hidden = !badge.times;
+  // The A4 sheet's cut lines, shown only for the sizes printed on sheets.
+  const sheetBox = box(t('sheet'), flag('cuts', 'showCuts'), flag('cutPage', 'cutPage'));
   const checks = el('div', 'checks');
   checks.append(
     box(t('card'), flag('hole', 'showHole')),
@@ -750,6 +761,7 @@ function badgeView(w: Wcif, people: Person[]) {
     box(t('faceBack'), flag('times', 'showTimes', (v) => { starts.hidden = !v; }), starts, ...(multiStage(w) ? [flag('stages', 'showStages')] : []), flag('stations', 'showStations'),
       flag('tasks', 'showTasks'), flag('hideStaffOnly', 'hideStaffOnly'), flag('qr', 'showQr', (v) => { qrFields.hidden = !v; })),
     box(t('roleStrips'), ...swatches.map((s) => s.l), rolesReset),
+    sheetBox,
   );
   // Titles of the organisers' own: the words in English and Turkish, a colour, and the people, found by name. Adding
   // someone shows their badge; WCIF photographers (staff-photo) can be added in one go.
@@ -869,7 +881,9 @@ function shopPages(cards: HTMLElement[], cw: number, ch: number) {
 }
 
 // A4 sheets, as in Badgifier: each person's back and front side by side at real size, edge to edge, on whichever
-// A4 orientation holds more people. Cut along the dashed lines, then fold each piece in the middle.
+// A4 orientation holds more people. Cut along the dashed lines, then fold each piece in the middle. The lines may be
+// left off the sheets, and a last page of the lines alone added, to print on the sheets' backs: they lie on the
+// cells' edges, symmetric about the sheet's middle, so they meet the fronts' whichever end of a sheet goes back in.
 function sheets(faces: HTMLElement[][], cw: number, ch: number) {
   const { pw, ph, cols, rows } = sheetGrid(cw, ch);
   pageStyle.textContent = `@page { size: ${pw}mm ${ph}mm; margin: 0; }`;
@@ -880,6 +894,11 @@ function sheets(faces: HTMLElement[][], cw: number, ch: number) {
     d.style[side] = `${mm}mm`;
     return d;
   };
+  const withCuts = (sheet: HTMLElement) => {
+    for (let c = 1; c < cols; c++) sheet.append(cut('cut-v', 'left', c * cellW));
+    for (let r = 1; r < rows; r++) sheet.append(cut('cut-h', 'top', r * cellH));
+    return sheet;
+  };
   const out: HTMLElement[] = [];
   for (let i = 0; i < faces.length; i += cols * rows) {
     const placed: [HTMLElement, number, number][] = [];
@@ -889,10 +908,9 @@ function sheets(faces: HTMLElement[][], cw: number, ch: number) {
       placed.push([back, x, y], [front, x + cw, y]);
     });
     const sheet = page(pw, ph, placed);
-    for (let c = 1; c < cols; c++) sheet.append(cut('cut-v', 'left', c * cellW));
-    for (let r = 1; r < rows; r++) sheet.append(cut('cut-h', 'top', r * cellH));
-    out.push(sheet);
+    out.push(badge.cuts ? withCuts(sheet) : sheet);
   }
+  if (badge.cutPage) out.push(withCuts(page(pw, ph, [])));
   return out;
 }
 
