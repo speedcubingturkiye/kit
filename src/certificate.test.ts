@@ -1,7 +1,7 @@
 // Run with `npm test`. Fictional people and finals.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { certComp, certificates, signers } from './certificate.ts';
+import { certComp, certificates, participations, signers } from './certificate.ts';
 import type { Podium } from './podium.ts';
 import type { Wcif } from './wcif.ts';
 
@@ -55,4 +55,34 @@ test('certificates: finished finals only, every place including ties, the decidi
   assert.equal(list[0].wcaId, '2017ERAD01');
   assert.equal(list[0].comp, comp);
   assert.equal(list[0].signs, signs);
+});
+
+test('participation: accepted competitors by name with their events; once there are results, those who competed', () => {
+  const reg = (eventIds: string[], status = 'accepted', isCompeting = true) => ({ eventIds, status, isCompeting });
+  const w = {
+    formatVersion: '1.1', id: 'Test2027', name: 'Test 2027', schedule: { startDate: '2026-10-31', numberOfDays: 1, venues: [] },
+    events: [{ id: '333', rounds: [{ id: '333-r1', format: 'a', results: [] }] }, { id: 'pyram', rounds: [] }, { id: '666', rounds: [] }],
+    persons: [
+      { ...person(1, 'Zeynep Ak'), registration: reg(['pyram', '333']) },
+      { ...person(2, 'Ömer Su'), countryIso2: 'GR', registration: reg(['666']) },
+      { ...person(3, 'Can Ay'), registration: reg(['333'], 'pending') },
+      { ...person(4, 'Ece Ün'), registration: reg([], 'accepted', false) },
+      person(5, 'Ada Er', ['organizer']),
+    ],
+  } as unknown as Wcif;
+  const comp = certComp(w, 'Istanbul');
+  const signs: [string, string][] = [['Ada Er', 'ORGANIZER']];
+  const list = participations(w, comp, signs, (c) => `flag:${c}`, (e) => `icon:${e}`);
+  assert.deepEqual(list.map((c) => [c.name, c.events?.map((e) => e.id)]), [['Ömer Su', ['666']], ['Zeynep Ak', ['333', 'pyram']]]);
+  assert.deepEqual(list[0].events, [{ id: '666', name: '6x6x6 Cube', icon: 'icon:666' }]);
+  assert.equal(list[0].part, true);
+  assert.equal(list[0].flag, 'flag:GR');
+  assert.equal(list[0].place, '');
+  // With results only those who competed: a DNF counts, a DNS alone does not.
+  const r1 = (w.events[0].rounds ?? [])[0];
+  r1.results = [
+    { personId: 2, ranking: 1, attempts: [{ value: -1 }], best: -1, average: -1 },
+    { personId: 1, ranking: null, attempts: [{ value: -2 }], best: -2, average: -2 },
+  ];
+  assert.deepEqual(participations(w, comp, signs, () => '', () => '').map((c) => [c.name, c.events?.map((e) => e.id)]), [['Ömer Su', ['333']]]);
 });

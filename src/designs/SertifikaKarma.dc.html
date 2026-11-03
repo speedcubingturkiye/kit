@@ -120,7 +120,7 @@ body{margin:0}
 <div style="{{ a.evEn }}">{{ a.evEnText }}</div>
 </div>
 </div>
-<sc-if value="{{ a.showScores }}" hint-placeholder-val="{{ true }}">
+<sc-if value="{{ a.part }}" hint-placeholder-val="{{ false }}"><div style="{{ a.evRow }}"><sc-if value="{{ a.part }}" hint-placeholder-val="{{ false }}"><sc-for list="{{ a.evs }}" as="ev" hint-placeholder-count="0"><sc-if value="{{ ev.d }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 500 500" aria-hidden="true" style="{{ ev.st }}"><path d="{{ ev.d }}" fill="currentColor" fill-rule="{{ ev.fr }}"></path></svg></sc-if><sc-if value="{{ ev.src }}" hint-placeholder-val="{{ false }}"><img alt="" src="{{ ev.src }}" style="{{ ev.st }}"></sc-if></sc-for></sc-if></div></sc-if><sc-if value="{{ a.showScores }}" hint-placeholder-val="{{ true }}">
 <div style="{{ a.score }}">
 <div style="{{ a.sLabel }}">{{ a.mainTr }}</div>
 <div style="{{ a.sLabelEn }}">{{ a.mainEn }}</div>
@@ -160,7 +160,7 @@ body{margin:0}
 </div>
 <div style="{{ b.fields }}">
 <div style="{{ b.row }}"><div style="{{ b.label }}"><span style="{{ b.placeWord }}">{{ b.placeText }}</span> awarded to:</div><div style="{{ b.box }}"><span style="{{ b.name }}">{{ b.nameText }}</span></div></div>
-<div style="{{ b.row }}"><div style="{{ b.label }}">{{ b.resLabel }}</div><div style="{{ b.boxRes }}"><span style="{{ b.res }}">{{ b.resVal }}</span></div></div>
+<div style="{{ b.row }}"><div style="{{ b.label }}">{{ b.resLabel }}</div><div style="{{ b.boxRes }}"><span style="{{ b.res }}">{{ b.resVal }}</span><sc-if value="{{ b.part }}" hint-placeholder-val="{{ false }}"><sc-for list="{{ b.evs }}" as="ev" hint-placeholder-count="0"><sc-if value="{{ ev.d }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 500 500" aria-hidden="true" style="{{ ev.st }}"><path d="{{ ev.d }}" fill="currentColor" fill-rule="{{ ev.fr }}"></path></svg></sc-if><sc-if value="{{ ev.src }}" hint-placeholder-val="{{ false }}"><img alt="" src="{{ ev.src }}" style="{{ ev.st }}"></sc-if></sc-for></sc-if></div></div>
 </div>
 <div style="{{ b.foot }}">
 <div style="{{ b.dateBox }}"><div style="{{ b.dateVal }}">{{ b.dateText }}</div><div style="{{ b.dateCap }}">DATE</div></div>
@@ -181,8 +181,8 @@ body{margin:0}
 <div style="{{ c.main }}">
 <div style="{{ c.opening }}"><b style="{{ c.nb }}">{{ c.delegate }}</b>, WCA Delegate, for the World Cube Association, and <b style="{{ c.nb }}">{{ c.organizer }}</b>, for the {{ c.compName }} organising team, hereby certify that</div>
 <div style="{{ c.name }}">{{ c.nameUp }}</div>
-<div style="{{ c.placed }}">HAS PLACED <span style="{{ c.placeRed }}">{{ c.placeWord }}</span> IN {{ c.evUp }}</div>
-<div style="{{ c.result }}">{{ c.resLine }}</div>
+<div style="{{ c.placed }}">{{ c.placedPre }}<span style="{{ c.placeRed }}">{{ c.placeWord }}</span>{{ c.placedPost }}</div>
+<div style="{{ c.result }}">{{ c.resLine }}<sc-if value="{{ c.part }}" hint-placeholder-val="{{ false }}"><sc-for list="{{ c.evs }}" as="ev" hint-placeholder-count="0"><sc-if value="{{ ev.d }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 500 500" aria-hidden="true" style="{{ ev.st }}"><path d="{{ ev.d }}" fill="currentColor" fill-rule="{{ ev.fr }}"></path></svg></sc-if><sc-if value="{{ ev.src }}" hint-placeholder-val="{{ false }}"><img alt="" src="{{ ev.src }}" style="{{ ev.st }}"></sc-if></sc-for></sc-if></div>
 <div style="{{ c.cityDate }}">{{ c.cityDateText }}</div>
 </div>
 <div style="{{ c.foot }}">
@@ -212,8 +212,8 @@ body{margin:0}
 <div style="{{ d.wcaId }}">{{ d.idText }}</div>
 </div>
 <div style="{{ d.evBlock }}">
-<div style="{{ d.placed }}">HAS PLACED <span style="{{ d.placeRed }}">{{ d.ord }}</span> AT</div>
-<div style="{{ d.event }}"><sc-if value="{{ d.evD }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 500 500" aria-hidden="true" style="{{ d.evIcon }}"><path d="{{ d.evD }}" fill="currentColor" fill-rule="{{ d.evFr }}"></path></svg></sc-if><sc-if value="{{ d.evSrc }}" hint-placeholder-val="{{ false }}"><img alt="" src="{{ d.evSrc }}" style="{{ d.evIcon }}"></sc-if><span>{{ d.evText }}</span><sc-if value="{{ d.evD }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 500 500" aria-hidden="true" style="{{ d.evIcon }}"><path d="{{ d.evD }}" fill="currentColor" fill-rule="{{ d.evFr }}"></path></svg></sc-if><sc-if value="{{ d.evSrc }}" hint-placeholder-val="{{ false }}"><img alt="" src="{{ d.evSrc }}" style="{{ d.evIcon }}"></sc-if></div>
+<div style="{{ d.placed }}">{{ d.placedPre }}<span style="{{ d.placeRed }}">{{ d.ord }}</span>{{ d.placedPost }}</div>
+<div style="{{ d.event }}"><sc-if value="{{ d.evD }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 500 500" aria-hidden="true" style="{{ d.evIcon }}"><path d="{{ d.evD }}" fill="currentColor" fill-rule="{{ d.evFr }}"></path></svg></sc-if><sc-if value="{{ d.evSrc }}" hint-placeholder-val="{{ false }}"><img alt="" src="{{ d.evSrc }}" style="{{ d.evIcon }}"></sc-if><span>{{ d.evText }}</span><sc-if value="{{ d.evD }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 500 500" aria-hidden="true" style="{{ d.evIcon }}"><path d="{{ d.evD }}" fill="currentColor" fill-rule="{{ d.evFr }}"></path></svg></sc-if><sc-if value="{{ d.evSrc }}" hint-placeholder-val="{{ false }}"><img alt="" src="{{ d.evSrc }}" style="{{ d.evIcon }}"></sc-if><sc-if value="{{ d.part }}" hint-placeholder-val="{{ false }}"><sc-for list="{{ d.evs }}" as="ev" hint-placeholder-count="0"><sc-if value="{{ ev.d }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 500 500" aria-hidden="true" style="{{ ev.st }}"><path d="{{ ev.d }}" fill="currentColor" fill-rule="{{ ev.fr }}"></path></svg></sc-if><sc-if value="{{ ev.src }}" hint-placeholder-val="{{ false }}"><img alt="" src="{{ ev.src }}" style="{{ ev.st }}"></sc-if></sc-for></sc-if></div>
 </div>
 <div style="{{ d.score }}"><div style="{{ d.sLabel }}">{{ d.sLabelText }}</div><div style="{{ d.sVal }}">{{ d.sValText }}</div></div>
 <div style="{{ d.foot }}">
@@ -252,7 +252,7 @@ body{margin:0}
 </sc-if>
 <div style="{{ e.place }}">{{ e.placeText }}</div>
 <div style="{{ e.nameLine }}"><div style="{{ e.name }}">{{ e.nameText }}</div></div>
-<div style="{{ e.resLine }}"><span style="{{ e.evPart }}">{{ e.evText }}</span><span style="{{ e.dot }}"></span><span style="{{ e.labPart }}">{{ e.labText }}</span><span style="{{ e.valPart }}">{{ e.valText }}</span></div>
+<div style="{{ e.resLine }}"><span style="{{ e.evPart }}">{{ e.evText }}</span><span style="{{ e.dot }}"></span><span style="{{ e.labPart }}">{{ e.labText }}</span><span style="{{ e.valPart }}">{{ e.valText }}</span><sc-if value="{{ e.part }}" hint-placeholder-val="{{ false }}"><sc-for list="{{ e.evs }}" as="ev" hint-placeholder-count="0"><sc-if value="{{ ev.d }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 500 500" aria-hidden="true" style="{{ ev.st }}"><path d="{{ ev.d }}" fill="currentColor" fill-rule="{{ ev.fr }}"></path></svg></sc-if><sc-if value="{{ ev.src }}" hint-placeholder-val="{{ false }}"><img alt="" src="{{ ev.src }}" style="{{ ev.st }}"></sc-if></sc-for></sc-if></div>
 <div style="{{ e.signRow }}">
 <sc-for list="{{ e.signs }}" as="sg" hint-placeholder-count="2">
 <div style="{{ sg.box }}">
@@ -265,11 +265,14 @@ body{margin:0}
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"outer":{"editor":"enum","options":["A","B","C","D","E"],"default":"C"},"inner":{"editor":"enum","options":["A","B","C","D","E"],"default":"B"},"place":{"editor":"enum","options":["1","2","3"],"default":"1"},"event":{"editor":"enum","options":["333", "222", "444", "555", "333oh", "clock", "pyram", "skewb", "sq1"],"default":"333"},"$preview":{"width":1123,"height":794}}'>
+<script type="text/x-dc" data-dc-script data-props='{"outer":{"editor":"enum","options":["A","B","C","D","E"],"default":"C"},"inner":{"editor":"enum","options":["A","B","C","D","E"],"default":"B"},"place":{"editor":"enum","options":["1","2","3"],"default":"1"},"event":{"editor":"enum","options":["333", "222", "444", "555", "333oh", "clock", "pyram", "skewb", "sq1"],"default":"333"},"kind":{"editor":"enum","options":["podium","participation"],"default":"podium"},"$preview":{"width":1123,"height":794}}'>
 class Component extends DCLogic {
   renderVals() {
     // Real data from the kit (props.cert), else the sample people below.
     const cert = this.props.cert || null;
+    // A participation certificate (props.cert.part from the kit, props.kind 'participation' on the canvas): no place,
+    // event or result, but the events the person took part in.
+    const PART = cert ? !!cert.part : this.props.kind === 'participation';
     // A date and a city, joined when both are known.
     const dateCity = (a, b) => [a, b].filter((s) => s).join(' · ');
     const place =['1', '2', '3'].indexOf(String(cert ? cert.place : this.props.place)) >= 0 ? String(cert ? cert.place : this.props.place) : '1';
@@ -359,9 +362,9 @@ class Component extends DCLogic {
     const ICON_LSB = { '333': 29.5, '222': 46.8, '444': 23.4, '555': 30.3, clock: 40, pyram: 38, skewb: 43, sq1: 50 };
 
     const isRec = scope === 'nr';
-    const PL = isRec ? { tr: 'TÜRKİYE REKORU', en: 'NATIONAL RECORD', bg: RED, fg: ON_RED } : PLACES[place];
+    const PL = PART ? { tr: 'KATILIM', en: 'PARTICIPATION', bg: RED, fg: ON_RED } : isRec ? { tr: 'TÜRKİYE REKORU', en: 'NATIONAL RECORD', bg: RED, fg: ON_RED } : PLACES[place];
     const P = cert ? { name: cert.name, wcaId: cert.wcaId, country: cert.country } : isRec ? SAMPLES.nr['1'] : SAMPLES[scope][place];
-    const SC = SCOPES[scope];
+    const SC = PART ? { kTr: 'KATILIM BELGESİ', kEn: 'CERTIFICATE OF PARTICIPATION', tag: '' } : SCOPES[scope];
     const fmt = FORMATS[ev] || 'a';
     // Only the result that decides the ranking: the average of 5, the mean of 3, or the best single (best-of rounds, BLD,
     // and an average round where the average is DNF). A record shows the kind of result that set it.
@@ -377,18 +380,19 @@ class Component extends DCLogic {
     };
     const main = [LABELS[kind][0], LABELS[kind][1], cert ? cert.result : kind === 'single' ? (isRec ? P.single : P.best) : P.avg];
     const second = null;
-    const numText = isRec ? 'NR' : place;
+    // A participation certificate's column shows the competition's year.
+    const numText = PART ? ((cert ? cert.comp.date : '2026').match(/\d{4}/) || [''])[0] : isRec ? 'NR' : place;
     // Sentences: the short one sits under the name; the full one opens with who certifies and closes with the result.
     const PW = { '1': ['birinci', 'first'], '2': ['ikinci', 'second'], '3': ['üçüncü', 'third'] }[place];
     const scTr = { open: '', tr: 'Türkiye sıralamasında ', new: 'ilk yarışmacılar arasında ', nr: '' }[scope];
     const scEn = { open: '', tr: ' among competitors from Türkiye', new: ' among newcomers', nr: '' }[scope];
     const EVT = EVENTS[ev];
-    const SENT = isRec
+    const SENT = PART ? [COMP.name + ' yarışmasına katılmıştır.', 'took part in ' + COMP.name + '.'] : isRec
       ? [COMP.name + "'da " + EVT[0] + ' branşında Türkiye rekoru kırmıştır.', 'set a national record in ' + EVT[1] + ' at ' + COMP.name + '.']
       : [COMP.name + "'da " + EVT[0] + ' branşında ' + scTr + PW[0] + ' olmuştur.', 'placed ' + PW[1] + ' in ' + EVT[1] + scEn + ' at ' + COMP.name + '.'];
     const resTr = kind === 'avg' ? main[2] + ' ortalamayla ' : kind === 'mean' ? '3 çözümde ' + main[2] + ' ortalamayla ' : main[2] + (isRec ? ' tek çözümle ' : ' en iyi çözümle ');
     const resEn = kind === 'avg' ? 'an average of ' + main[2] : kind === 'mean' ? 'a mean of ' + main[2] : isRec ? 'a ' + main[2] + ' single' : 'a best single of ' + main[2];
-    const CLOSE = isRec
+    const CLOSE = PART ? SENT : isRec
       ? [EVT[0] + ' branşında ' + resTr + 'Türkiye rekoru kırmıştır.', 'set a national record in ' + EVT[1] + ' with ' + resEn + '.']
       : [EVT[0] + ' branşında ' + resTr + scTr + PW[0] + ' olmuştur.', 'placed ' + PW[1] + scEn + ' in ' + EVT[1] + ' with ' + resEn + '.'];
     const latin = P.name.replace(/\s*\([^)]*\)\s*$/, '').trim();
@@ -410,6 +414,14 @@ class Component extends DCLogic {
       date: cert ? cert.comp.date : '31 OCTOBER - 1 NOVEMBER 2026',
       city: cert ? cert.comp.city : 'ISTANBUL'
     };
+    // The events of a participation certificate: the kit's, else a sample; the design's drawings where it has them,
+    // else the kit's icons. A row of n icons fits a width at up to max mm, 0.35 of a size apart.
+    const EVS = !PART ? [] : (cert ? cert.events || [] : ['333', '222', '444', '333oh', 'pyram', 'skewb'].map((id) => ({ id: id, name: EVENTS[id][1], icon: '' })))
+      .map((x) => ({ d: ICON[x.id] ? ICON[x.id][0] : '', fr: ICON[x.id] ? ICON[x.id][1] : 'nonzero', src: ICON[x.id] ? '' : x.icon || '' }));
+    const evFit = (avail, max) => Math.min(max, avail / Math.max(1, EVS.length * 1.35 - 0.35));
+    const evRow = (size) => EVS.map((x) => Object.assign({}, x, { st: { display: 'block', flex: 'none', width: mm(size), height: mm(size), color: '#1a1a1a' } }));
+    const nEv = EVS.length + (EVS.length === 1 ? ' event' : ' events');
+    if (PART) Object.assign(EN, { placeTitle: 'Certificate', word: nEv, label: '', value: '', event: 'Certificate of Participation' });
     const cap1 = (s) => s.charAt(0) + s.slice(1).toLowerCase();
     // Turkish names need the Turkish capitals (i to İ, ı to I); other names must not get them.
     const upName = latin.toLocaleUpperCase(P.country === 'TR' ? 'tr-TR' : 'en-US');
@@ -474,7 +486,7 @@ class Component extends DCLogic {
       const sSize = sur ? fitW(sur, nameW, gSize * 0.66, W600, 0) : 0;
       const idSize = 4.2;
       const evSize = 11;
-      const numSize = isRec ? Math.min(96, (rW - 20) / (tw(numText, W800) * 1.1)) : 96;
+      const numSize = isRec || PART ? Math.min(96, (rW - 20) / (tw(numText, W800) * 1.1)) : 96;
       const wmH = 120;
       // Real data: a long competition name or result is set smaller to fit.
       const compFit = fitW(COMP.name, (mixed ? BW - logoH * SCTR_ASPECT : W - 2 * m - logoH * ASP) - 10, compSize, W800, 0);
@@ -594,6 +606,18 @@ class Component extends DCLogic {
         g.tagText = scope === 'new' ? 'NEWCOMER' : SC.tag;
         g.signs = g.signs.map((sg, i) => Object.assign({}, sg, { roleText: SIGNS[i][2] }));
       }
+      if (PART) {
+        const sz = evFit(nameW, 10);
+        const up = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+        Object.assign(g, {
+          part: true, evD: '', evSrc: '', showScores: false,
+          result: { position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: mm(4) },
+          evTrText: text === 'full' ? (lang === 'en' ? up(CLOSE[1]) : CLOSE[0]) : lang === 'en' ? 'EVENTS' : 'BRANŞLAR',
+          evEnText: text === 'full' ? CLOSE[1] : 'EVENTS',
+          evRow: { display: 'flex', alignItems: 'center', gap: mm(sz * 0.35) },
+          evs: evRow(sz)
+        });
+      }
       // Outer A: the band, the watermark and the place column, each placed on the page.
       g.band = Object.assign({}, g.band, { position: 'absolute', left: 0, top: 0, width: mm(W) });
       g.wmClip = { position: 'absolute', left: 0, top: mm(bandH), width: mm(bodyW), height: mm(H - bandH), overflow: 'hidden' };
@@ -663,6 +687,10 @@ class Component extends DCLogic {
         signRow: { display: 'flex', gap: mm(12) },
         signs: sign(60, '#1a1a1a', '#1a1a1a', '#555555')
       };
+      if (PART) {
+        const sz = evFit(boxW, 9);
+        Object.assign(g, { part: true, evD: '', evSrc: '', resLabel: 'Events:', evs: evRow(sz), boxRes: Object.assign({ width: mm(boxW) }, box, { gap: mm(sz * 0.35) }) });
+      }
       return g;
     };
 
@@ -690,7 +718,8 @@ class Component extends DCLogic {
         placed: { marginTop: mm(6), fontSize: mm(7), lineHeight: 1.1, fontWeight: 700, fontStretch: ST, letterSpacing: '0.05em', whiteSpace: 'nowrap' },
         placeRed: { color: RED_TEXT, fontWeight: 800 },
         placeWord: EN.word.toUpperCase(),
-        evUp: EN.event.toUpperCase(),
+        placedPre: PART ? 'HAS TAKEN PART IN ' : 'HAS PLACED ',
+        placedPost: PART ? '' : ' IN ' + EN.event.toUpperCase(),
         result: { marginTop: mm(3), fontSize: mm(5.4), lineHeight: 1.1, fontWeight: 600, fontStretch: ST, letterSpacing: '0.06em', whiteSpace: 'nowrap' },
         resLine: ('with ' + resEn).toUpperCase(),
         cityDate: { marginTop: mm(9), fontSize: mm(3.8), lineHeight: 1, fontWeight: 700, letterSpacing: '0.14em', color: '#555555', whiteSpace: 'nowrap' },
@@ -701,6 +730,10 @@ class Component extends DCLogic {
         signs: sign(50, '#1a1a1a', '#1a1a1a', '#555555'),
         wcaStyle: { display: 'block', flex: 'none', width: mm(17), height: mm(17), overflow: 'visible' }
       };
+      if (PART) {
+        const sz = evFit(BW - 20, 9);
+        Object.assign(g, { part: true, resLine: '', evs: evRow(sz), result: Object.assign({}, g.result, { marginTop: mm(5), display: 'flex', justifyContent: 'center', gap: mm(sz * 0.35) }) });
+      }
       return g;
     };
 
@@ -738,7 +771,9 @@ class Component extends DCLogic {
         evBlock: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: mm(3.4) },
         placed: { fontSize: mm(4.4), lineHeight: 1, fontWeight: 700, letterSpacing: '0.14em', color: '#555555', whiteSpace: 'nowrap' },
         placeRed: { color: RED_TEXT, fontWeight: 800 },
-        ord: { '1': '1ST', '2': '2ND', '3': '3RD' }[place],
+        ord: PART ? nEv.toUpperCase() : { '1': '1ST', '2': '2ND', '3': '3RD' }[place],
+        placedPre: PART ? 'HAS TAKEN PART IN ' : 'HAS PLACED ',
+        placedPost: PART ? '' : ' AT',
         event: { display: 'flex', alignItems: 'center', gap: mm(4), fontSize: mm(8), lineHeight: 1.1, fontWeight: 700, whiteSpace: 'nowrap' },
         evIcon: { display: 'block', flex: 'none', width: mm(8), height: mm(8) },
         evD: icon[0],
@@ -758,6 +793,10 @@ class Component extends DCLogic {
         signs: sign(50, '#1a1a1a', '#1a1a1a', '#555555'),
         wcaStyle: { display: 'block', justifySelf: 'end', width: mm(logoW), height: mm(logoW / WCA_ASPECT), overflow: 'visible' }
       };
+      if (PART) {
+        const sz = evFit(BW - 20, 10);
+        Object.assign(g, { part: true, evD: '', evSrc: '', evText: '', evs: evRow(sz), event: Object.assign({}, g.event, { gap: mm(sz * 0.35) }), score: { display: 'none' } });
+      }
       return g;
     };
 
@@ -803,6 +842,11 @@ class Component extends DCLogic {
       g.compGroup = { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: mm(2.4) };
       g.dateLine = { fontSize: mm(3.4), lineHeight: 1, fontWeight: 600, letterSpacing: '0.12em', color: '#555555', whiteSpace: 'nowrap' };
       g.dateLineText = dateCity(EN.date, EN.city);
+      if (PART) {
+        const sz = evFit(205, 9);
+        Object.assign(g, { part: true, placeText: 'CERTIFICATE OF PARTICIPATION', evText: '', labText: '', valText: '', dot: { display: 'none' }, evs: evRow(sz),
+          resLine: Object.assign({}, g.resLine, { alignItems: 'center', gap: mm(sz * 0.35), padding: '0 ' + mm(8) + ' ' + mm(3.5) }) });
+      }
       return g;
     };
 

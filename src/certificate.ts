@@ -21,6 +21,9 @@ export type Cert = {
   result: string;
   comp: CertComp;
   signs: [name: string, role: string][];
+  // A participation certificate: no place, event or result, but the events the person took part in.
+  part?: boolean;
+  events?: { id: string; name: string; icon: string }[];
 };
 
 // The dates as the certificates write them: '31 OCTOBER - 1 NOVEMBER 2026', without the year next to the city, and
@@ -70,4 +73,43 @@ export function certificates(
       signs,
     };
   }));
+}
+
+// Participation certificates: one for each accepted competitor, by name in Turkish order, with their events in the
+// competition's order. Once the WCIF has results, only those who competed (a solve or a DNF) get one, with the events
+// they competed in; before that, everyone with the events they registered for.
+export function participations(
+  w: Wcif, comp: CertComp, signs: [string, string][], flagOf: (iso2: string) => string, iconOf: (event: string) => string,
+): Cert[] {
+  const competed = new Map<number, Set<string>>();
+  for (const e of w.events) {
+    for (const r of e.rounds ?? []) {
+      for (const x of r.results ?? []) {
+        if (x.attempts.some((a) => a.value > 0 || a.value === -1)) competed.set(x.personId, (competed.get(x.personId) ?? new Set()).add(e.id));
+      }
+    }
+  }
+  return w.persons
+    .filter((p) => p.registration?.status === 'accepted' && p.registration.isCompeting && (!competed.size || competed.has(p.registrantId ?? -1)))
+    .sort((a, b) => a.name.localeCompare(b.name, 'tr'))
+    .map((p): Cert => {
+      const mine = competed.get(p.registrantId ?? -1) ?? new Set(p.registration?.eventIds);
+      return {
+        name: p.name,
+        wcaId: p.wcaId ?? '',
+        country: p.countryIso2,
+        countryName: countryName(p.countryIso2, 'en'),
+        flag: flagOf(p.countryIso2),
+        place: '',
+        event: '',
+        eventName: '',
+        icon: '',
+        kind: 'single',
+        result: '',
+        comp,
+        signs,
+        part: true,
+        events: w.events.filter((e) => mine.has(e.id)).map((e) => ({ id: e.id, name: EVENTS[e.id]?.[2] ?? e.id, icon: iconOf(e.id) })),
+      };
+    });
 }

@@ -3,7 +3,7 @@ import badgeA from './designs/BadgeV1_1.dc.html?dc';
 import badgeB from './designs/BadgeV2_1.dc.html?dc';
 import certDesign from './designs/SertifikaKarma.dc.html?dc';
 import { badgeComp, badgePerson, groupList, liveUrl, multiStage, sheetGrid, titleOf, titleParam, type BadgeLang, type BadgeTitle } from './badge.ts';
-import { certComp, certificates, signers, type Cert } from './certificate.ts';
+import { certComp, certificates, participations, signers, type Cert } from './certificate.ts';
 import { renderDesign } from './dc.ts';
 import { EVENTS, TASK_LETTER, TEXT, countryName, fill, type Lang } from './i18n.ts';
 import { ICONS } from './icons.ts';
@@ -116,6 +116,8 @@ const CERT_DESIGNS = ['A', 'B', 'C', 'D', 'E'] as const;
 type CertDesign = (typeof CERT_DESIGNS)[number];
 const certDesignOf = (v: string | null, d: CertDesign) => CERT_DESIGNS.find((k) => k === v) ?? d;
 const certOpts = {
+  // Podium certificates, or participation ones for every competitor (URL ck=part).
+  kind: (query.get('ck') === 'part' ? 'part' : 'podium') as 'podium' | 'part',
   outer: certDesignOf(query.get('out'), 'C'), inner: certDesignOf(query.get('in'), 'B'), event: query.get('ev') ?? '',
   // Each design's own touches: B's outer frame as a band or a thin line on white, C's capitals condensed or
   // normal width, and inner A's sentence and language.
@@ -160,6 +162,7 @@ function syncUrl() {
   const q = new URLSearchParams({ c: wcif.id });
   if (view === 'certificates') {
     q.set('v', 'certificates');
+    if (certOpts.kind === 'part') q.set('ck', 'part');
     q.set('out', certOpts.outer);
     q.set('in', certOpts.inner);
     if (certOpts.event) q.set('ev', certOpts.event);
@@ -294,6 +297,8 @@ function certView(w: Wcif) {
   let certs: Cert[] = [];
   const meta = el('p', 'hint');
   const list = el('div', 'podiums');
+  // The finals' states, which participation certificates do not need.
+  const finals = [el('h3', 'finals', t('finals')), list];
   const refresh = el('button', 'go', t('refresh'));
   refresh.setAttribute('type', 'button');
   const go = el('button', 'go', t('print'));
@@ -324,16 +329,21 @@ function certView(w: Wcif) {
       + (podiums?.note ? ' ' + t(podiums.note) : '');
     list.replaceChildren(...(shown.length ? shown.map(podiumCard) : [el('p', 'empty', t('noRounds'))]));
     await loadFlags();
-    const all = certificates(shown, certComp(cur, city), [[signs.delegate, 'WCA DELEGATE'], [signs.organizer, 'ORGANIZER']],
-      (c) => (flags?.[c] ? svgUri(flags[c]) : ''), (e) => ICON_URIS[e] ?? '');
-    const done = [...new Set(all.map((c) => c.event))];
+    // Participation certificates go to every competitor; the event narrows them to those in it.
+    const part = certOpts.kind === 'part';
+    const args = [certComp(cur, city), [[signs.delegate, 'WCA DELEGATE'], [signs.organizer, 'ORGANIZER']] as [string, string][],
+      (c: string) => (flags?.[c] ? svgUri(flags[c]) : ''), (e: string) => ICON_URIS[e] ?? ''] as const;
+    const all = part ? participations(cur, ...args) : certificates(shown, ...args);
+    const inEvent = (c: Cert, e: string) => (part ? (c.events ?? []).some((x) => x.id === e) : c.event === e);
+    const done = part ? cur.events.map((e) => e.id).filter((e) => all.some((c) => inEvent(c, e))) : [...new Set(all.map((c) => c.event))];
     if (!done.includes(certOpts.event)) certOpts.event = '';
     syncUrl();
     events.replaceChildren(new Option(t('allEvents'), ''), ...done.map((e) => new Option(evName(e), e)));
     events.value = certOpts.event;
-    certs = certOpts.event ? all.filter((c) => c.event === certOpts.event) : all;
+    certs = certOpts.event ? all.filter((c) => inEvent(c, certOpts.event)) : all;
+    finals.forEach((x) => { x.hidden = part; });
     notes.replaceChildren(
-      el('p', 'out', certs.length ? fill(t('outCerts'), { n: certs.length }) : t('noCerts')),
+      el('p', 'out', certs.length ? fill(t('outCerts'), { n: certs.length }) : t(part ? 'noParts' : 'noCerts')),
       el('p', 'hint', t('printCerts')),
     );
     nav.hidden = !certs.length;
@@ -343,7 +353,7 @@ function certView(w: Wcif) {
       return;
     }
     certAt = Math.min(certAt, certs.length - 1);
-    pick.replaceChildren(...certs.map((c, i) => new Option(`${evName(c.event)} · ${c.place} · ${c.name}`, String(i))));
+    pick.replaceChildren(...certs.map((c, i) => new Option(c.part ? c.name : `${evName(c.event)} · ${c.place} · ${c.name}`, String(i))));
     pick.value = String(certAt);
     count.textContent = `${certAt + 1} / ${certs.length}`;
     const pair = el('div', 'pair');
@@ -382,6 +392,8 @@ function certView(w: Wcif) {
   customize();
   const opts = el('div', 'opts');
   opts.append(
+    select(t('certKind'), [['podium', t('kindPodium')], ['part', t('kindPart')]], certOpts.kind,
+      (v) => { certOpts.kind = v === 'part' ? 'part' : 'podium'; certAt = 0; draw(); }),
     select(t('outer'), designs, certOpts.outer, (v) => { certOpts.outer = certDesignOf(v, 'C'); customize(); draw(); }),
     select(t('inner'), designs, certOpts.inner, (v) => { certOpts.inner = certDesignOf(v, 'B'); customize(); draw(); }),
     evLabel,
@@ -415,7 +427,7 @@ function certView(w: Wcif) {
   refresh.addEventListener('click', update);
   draw();
   if ((resultsPosted || scoretaking === 'wca_live') && !podiums) update();
-  return [bar, opts, custom, notes, nav, preview, el('h3', 'finals', t('finals')), list];
+  return [bar, opts, custom, notes, nav, preview, ...finals];
 }
 
 // A4 landscape, one certificate a page, edge to edge.
