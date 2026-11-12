@@ -161,28 +161,38 @@ export function dateRange(start: string, days: number, locale: 'en' | 'tr', mont
   return month(first) === month(last) ? `${a} - ${b} ${month(last)}` : `${a} ${month(first)} - ${b} ${month(last)}`;
 }
 
-// A4 sheet for badges of w × h mm printed as back-and-front pairs (2w × h): the orientation that holds more pairs,
-// portrait on a tie.
-export function sheetGrid(w: number, h: number) {
-  const fit = (pw: number, ph: number) => ({ pw, ph, cols: Math.floor(pw / (2 * w) + 1e-6), rows: Math.floor(ph / h + 1e-6) });
+// A4 sheet for badges of w × h mm printed as back-and-front pairs (2w × h), inside a blank margin of m mm on every
+// edge for printers that cannot print to the edge: the orientation that holds more pairs, portrait on a tie.
+export function sheetGrid(w: number, h: number, m = 0) {
+  const fit = (pw: number, ph: number) => ({ pw, ph, cols: Math.floor((pw - 2 * m) / (2 * w) + 1e-6), rows: Math.floor((ph - 2 * m) / h + 1e-6) });
   const portrait = fit(210, 297);
   const landscape = fit(297, 210);
   return portrait.cols * portrait.rows >= landscape.cols * landscape.rows ? portrait : landscape;
 }
 
-// The cut lines on that sheet, in mm from its left (xs) and top (ys). Along an axis where the pairs fill their cells
-// (A6, A7) the lines lie between the cells; where they leave a margin (9 × 12 cm) they lie on every pair's edges, so
-// that cutting along all of them leaves each pair clean. The pairs are centred, so the lines are symmetric either way.
-export function sheetCuts(w: number, h: number) {
-  const { pw, ph, cols, rows } = sheetGrid(w, h);
+// Where the pairs go on that sheet and its cut lines, in mm from its left (x) and top (y). Centred, each pair sits in
+// the middle of its share of the sheet inside the margin, and the lines are symmetric about the sheet's middle. In the
+// corner, the pairs are packed against the top left of the margin, so neighbours share their cut lines and, with no
+// margin, the sheet's own edges are two of each pair's: the fewest cuts and all the waste in one strip at the right
+// and one at the bottom. The lines lie on the pairs' edges; two less than 1 mm apart (A6 and A7 cells) become one
+// between them, and none lies on the sheet's edge.
+export function sheetLayout(w: number, h: number, { margin = 0, corner = false } = {}) {
+  const { pw, ph, cols, rows } = sheetGrid(w, h, margin);
   const axis = (page: number, n: number, size: number) => {
-    const cell = page / n;
-    const gap = (cell - size) / 2;
-    return gap < 0.5
-      ? Array.from({ length: n - 1 }, (_, i) => (i + 1) * cell)
-      : Array.from({ length: n }, (_, i) => [i * cell + gap, (i + 1) * cell - gap]).flat();
+    const cell = (page - 2 * margin) / n;
+    const at = Array.from({ length: n }, (_, i) => margin + (corner ? i * size : i * cell + (cell - size) / 2));
+    const cuts: number[] = [];
+    for (const e of at.flatMap((a) => [a, a + size])) {
+      if (e < 0.5 || e > page - 0.5) continue;
+      const last = cuts.length - 1;
+      if (last >= 0 && e - cuts[last] < 1) cuts[last] = (cuts[last] + e) / 2;
+      else cuts.push(e);
+    }
+    return { at, cuts: cuts.map((c) => Math.round(c * 1000) / 1000) };
   };
-  return { xs: axis(pw, cols, 2 * w), ys: axis(ph, rows, h) };
+  const x = axis(pw, cols, 2 * w);
+  const y = axis(ph, rows, h);
+  return { pw, ph, cols, rows, xs: x.at, ys: y.at, cutX: x.cuts, cutY: y.cuts };
 }
 
 // The back face's QR: the competition's live results. WCA Live's link works once the delegate has imported the

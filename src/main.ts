@@ -2,7 +2,7 @@ import './style.css';
 import badgeA from './designs/BadgeV1_1.dc.html?dc';
 import badgeB from './designs/BadgeV2_1.dc.html?dc';
 import certDesign from './designs/SertifikaKarma.dc.html?dc';
-import { badgeComp, badgePerson, groupList, liveUrl, multiStage, sheetCuts, sheetGrid, titleOf, titleParam, type BadgeLang, type BadgeTitle } from './badge.ts';
+import { badgeComp, badgePerson, groupList, liveUrl, multiStage, sheetGrid, sheetLayout, titleOf, titleParam, type BadgeLang, type BadgeTitle } from './badge.ts';
 import { certComp, certificates, participations, signers, type Cert } from './certificate.ts';
 import { renderDesign } from './dc.ts';
 import { EVENTS, TASK_LETTER, TEXT, countryName, fill, type Lang } from './i18n.ts';
@@ -34,6 +34,7 @@ const SIZES: Record<string, [number, number]> = {
 };
 const sizeLabel = (k: string) => (/^\d+x\d+$/.test(k) ? `${k.replace('x', ' × ')} cm` : k);
 const BLEED = 3;
+const MARGINS = ['0', '3', '4', '5', '6', '8'];
 const PX = 96 / 25.4;
 const SVGNS = 'http://www.w3.org/2000/svg';
 const svgUri = (svg: string) => `data:image/svg+xml,${encodeURIComponent(svg)}`;
@@ -106,6 +107,10 @@ const badge = {
   // The other sizes on A4 sheets too, as A6 and A7 are, in place of the print shop's single cards (off unless ticked).
   a4: query.get('a4') === '1',
   cutPage: query.get('cutp') === '1',
+  // On sheets: the pairs centred, or packed in the top left corner for the fewest cuts (URL al=c), and a blank margin
+  // in mm on every edge for printers that cannot print to the edge (URL mg), the cards keeping their size.
+  corner: query.get('al') === 'c',
+  margin: MARGINS.includes(query.get('mg') ?? '') ? Number(query.get('mg')) : 0,
   // Titles of the organisers' own (a photographer, say) for chosen people, in place of their role (URL ut, repeated).
   titles: query.getAll('ut').map(titleOf).filter((x): x is BadgeTitle => !!x),
   roles: Object.fromEntries(STRIP_ROLES.map((k, i) =>
@@ -196,6 +201,8 @@ function syncUrl() {
     if (!badge.cuts) q.set('cut', '0');
     if (badge.cutPage) q.set('cutp', '1');
     if (badge.a4) q.set('a4', '1');
+    if (badge.corner) q.set('al', 'c');
+    if (badge.margin) q.set('mg', String(badge.margin));
     for (const x of badge.titles) q.append('ut', titleParam(x));
     if (STRIP_ROLES.some((k) => badge.roles[k] !== ROLE_COLORS[k])) q.set('rk', STRIP_ROLES.map((k) => badge.roles[k].slice(1)).join('-'));
   }
@@ -672,18 +679,20 @@ function badgeView(w: Wcif, people: Person[]) {
     syncUrl();
     const { w: cw, h: ch } = cardSize();
     Object.assign(preview.dataset, { w: String(cw), h: String(ch) });
-    const grid = sheetGrid(cw, ch);
+    const grid = layout();
     const sheetCount = Math.ceil(people.length / (grid.cols * grid.rows));
     a4Box.hidden = homeSize() || !fitsA4();
     cutsBox.hidden = !onSheets();
+    cutPageBox.hidden = badge.corner;
     sheetBox.hidden = a4Box.hidden && cutsBox.hidden;
     notes.replaceChildren(
       el('p', 'out', onSheets()
-        ? fill(t('outSheets'), { n: people.length, pages: sheetCount }) + (badge.cutPage ? t('outCutPage') : '')
+        ? fill(t('outSheets'), { n: people.length, pages: sheetCount }) + (cutPageOn() ? t('outCutPage') : '')
         : fill(t('outShop'), { n: people.length, pages: people.length * 2, w: (cw + 2 * BLEED).toLocaleString(lang), h: (ch + 2 * BLEED).toLocaleString(lang) })),
       el('p', 'hint', t(onSheets() ? 'printSheets' : 'printShop')),
     );
-    if (onSheets() && badge.cutPage) notes.append(el('p', 'hint', fill(t('printCutPage'), { pages: sheetCount })));
+    if (onSheets() && cutPageOn()) notes.append(el('p', 'hint', fill(t('printCutPage'), { pages: sheetCount })));
+    if (onSheets() && badge.margin && !sheetMargin()) notes.append(el('p', 'hint', fill(t('marginTooBig'), { mm: badge.margin })));
     if (badge.qr) {
       const q = qrOf(w);
       notes.append(el('p', 'hint', fill(t('qrNote'), { url: q.url })
@@ -772,7 +781,13 @@ function badgeView(w: Wcif, people: Person[]) {
   // Whether the other sizes go on A4 sheets, and the sheet's cut lines, shown only for the sizes printed on sheets.
   const a4Box = flag('a4', 'onA4');
   const cutsBox = el('div');
-  cutsBox.append(flag('cuts', 'showCuts'), flag('cutPage', 'cutPage'));
+  // The cut-line page needs lines symmetric about the sheet's middle, which the corner's are not.
+  const cutPageBox = flag('cutPage', 'cutPage');
+  cutsBox.append(
+    select(t('align'), [['', t('alignCentre')], ['c', t('alignCorner')]], badge.corner ? 'c' : '', (v) => { badge.corner = v === 'c'; draw(); }),
+    select(t('margin'), MARGINS.map((m) => [m, m === '0' ? t('marginNone') : `${m} mm`]), String(badge.margin), (v) => { badge.margin = Number(v); draw(); }),
+    flag('cuts', 'showCuts'), cutPageBox,
+  );
   const sheetBox = box(t('sheet'), a4Box, cutsBox);
   const checks = el('div', 'checks');
   checks.append(
@@ -864,12 +879,16 @@ function badgeView(w: Wcif, people: Person[]) {
 const homeSize = () => badge.size === 'A6' || badge.size === 'A7';
 const fitsA4 = () => { const { w, h } = cardSize(); const g = sheetGrid(w, h); return g.cols * g.rows > 0; };
 const onSheets = () => homeSize() || (badge.a4 && fitsA4());
+const cutPageOn = () => badge.cutPage && !badge.corner;
+// The margin asked for, or none when a pair would not fit inside it.
+const sheetMargin = () => { const { w, h } = cardSize(); const g = sheetGrid(w, h, badge.margin); return g.cols * g.rows > 0 ? badge.margin : 0; };
+const layout = () => { const { w, h } = cardSize(); return sheetLayout(w, h, { margin: sheetMargin(), corner: badge.corner }); };
 
 async function printBadges(w: Wcif, people: Person[]) {
   const { w: cw, h: ch } = cardSize();
   await loadFlags();
   const faces = cards(w, people);
-  const pages = onSheets() ? sheets(faces, cw, ch) : shopPages(faces.flat(), cw, ch);
+  const pages = onSheets() ? sheets(faces, cw) : shopPages(faces.flat(), cw, ch);
   $('print').replaceChildren(...pages);
   // The bleed is measured, so Archivo (both subsets) must be in before the layout is read.
   await document.fonts.load('800 10px Archivo', 'AaİıŞşĞğ');
@@ -904,38 +923,35 @@ function shopPages(cards: HTMLElement[], cw: number, ch: number) {
 }
 
 // A4 sheets, as in Badgifier: each person's back and front side by side at real size, edge to edge, on whichever
-// A4 orientation holds more people. Cut along the dashed lines, then fold each piece in the middle. The lines may be
-// left off the sheets, and a last page of the lines alone added, to print on the sheets' backs: they lie on the
-// cells' or the pairs' edges (sheetCuts), symmetric about the sheet's middle, so they meet the fronts' whichever end
-// of a sheet goes back in.
-function sheets(faces: HTMLElement[][], cw: number, ch: number) {
-  const { pw, ph, cols, rows } = sheetGrid(cw, ch);
+// A4 orientation holds more people, centred or in the corner, inside the margin (sheetLayout). Cut along the dashed
+// lines, then fold each piece in the middle. The lines may be left off the sheets, and with the pairs centred a last
+// page of the lines alone added, to print on the sheets' backs: they are symmetric about the sheet's middle, so they
+// meet the fronts' whichever end of a sheet goes back in.
+function sheets(faces: HTMLElement[][], cw: number) {
+  const { pw, ph, cols, rows, xs, ys, cutX, cutY } = layout();
   pageStyle.textContent = `@page { size: ${pw}mm ${ph}mm; margin: 0; }`;
-  const cellW = pw / cols;
-  const cellH = ph / rows;
-  const { xs, ys } = sheetCuts(cw, ch);
   const cut = (cls: string, side: 'left' | 'top', mm: number) => {
     const d = el('div', `cut ${cls}`);
     d.style[side] = `${mm}mm`;
     return d;
   };
   const withCuts = (sheet: HTMLElement) => {
-    for (const x of xs) sheet.append(cut('cut-v', 'left', x));
-    for (const y of ys) sheet.append(cut('cut-h', 'top', y));
+    for (const x of cutX) sheet.append(cut('cut-v', 'left', x));
+    for (const y of cutY) sheet.append(cut('cut-h', 'top', y));
     return sheet;
   };
   const out: HTMLElement[] = [];
   for (let i = 0; i < faces.length; i += cols * rows) {
     const placed: [HTMLElement, number, number][] = [];
     faces.slice(i, i + cols * rows).forEach(([front, back], k) => {
-      const x = (k % cols) * cellW + (cellW - 2 * cw) / 2;
-      const y = Math.floor(k / cols) * cellH + (cellH - ch) / 2;
+      const x = xs[k % cols];
+      const y = ys[Math.floor(k / cols)];
       placed.push([back, x, y], [front, x + cw, y]);
     });
     const sheet = page(pw, ph, placed);
     out.push(badge.cuts ? withCuts(sheet) : sheet);
   }
-  if (badge.cutPage) out.push(withCuts(page(pw, ph, [])));
+  if (cutPageOn()) out.push(withCuts(page(pw, ph, [])));
   return out;
 }
 

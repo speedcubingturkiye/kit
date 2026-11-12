@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { badgeComp, badgeLegend, badgePerson, badgeRows, dateRange, groupList, liveUrl, sheetCuts, sheetGrid, titleOf, titleParam } from './badge.ts';
+import { badgeComp, badgeLegend, badgePerson, badgeRows, dateRange, groupList, liveUrl, sheetGrid, sheetLayout, titleOf, titleParam } from './badge.ts';
 import { EVENTS } from './i18n.ts';
 import { ICONS } from './icons.ts';
 import { qrPath } from './qr.ts';
@@ -167,10 +167,23 @@ test('A4 sheets: A6 two people a sheet, A7 four, in either orientation', () => {
   assert.equal(grid(90, 120), '210x297 1x2');
 });
 
-test('sheet cut lines', () => {
-  assert.deepEqual(sheetCuts(105, 148), { xs: [], ys: [148.5] });
-  assert.deepEqual(sheetCuts(74, 105), { xs: [148.5], ys: [105] });
-  assert.deepEqual(sheetCuts(90, 120), { xs: [15, 195], ys: [14.25, 134.25, 162.75, 282.75] });
+test('sheet layout and cut lines', () => {
+  const cuts = (w: number, h: number, o = {}) => { const l = sheetLayout(w, h, o); return { x: l.cutX, y: l.cutY }; };
+  const at = (w: number, h: number, o = {}) => { const l = sheetLayout(w, h, o); return { x: l.xs, y: l.ys }; };
+  assert.deepEqual(cuts(105, 148), { x: [], y: [148.5] });
+  assert.deepEqual(cuts(74, 105), { x: [148.5], y: [105] });
+  assert.deepEqual(cuts(90, 120), { x: [15, 195], y: [14.25, 134.25, 162.75, 282.75] });
+  assert.deepEqual(at(90, 120), { x: [15], y: [14.25, 162.75] });
+  // In the corner: flush with the sheet's top left, neighbours sharing a line.
+  assert.deepEqual(at(90, 120, { corner: true }), { x: [0], y: [0, 120] });
+  assert.deepEqual(cuts(90, 120, { corner: true }), { x: [180], y: [120, 240] });
+  // A 5 mm margin keeps the cards' size, and the corner is the margin's.
+  assert.deepEqual(cuts(90, 120, { margin: 5, corner: true }), { x: [5, 185], y: [5, 125, 245] });
+  assert.deepEqual(cuts(90, 120, { margin: 5 }), { x: [15, 195], y: [16.75, 136.75, 160.25, 280.25] });
+  // A6 pairs fill the portrait sheet's width, so with a margin one fits on a landscape sheet.
+  const g = sheetGrid(105, 148, 3);
+  assert.equal(`${g.pw}x${g.ph} ${g.cols}x${g.rows}`, '297x210 1x1');
+  assert.equal(sheetGrid(110, 150, 50).cols, 0);
 });
 
 test('dates without the year', () => {
