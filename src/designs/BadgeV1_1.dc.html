@@ -97,7 +97,7 @@ body{margin:0}
 <sc-for list="{{ tg.rows }}" as="r" hint-placeholder-count="6">
 <sc-if value="{{ r.isDay }}" hint-placeholder-val="{{ false }}"><div style="{{ r.dayRow }}">{{ r.dayText }}</div></sc-if><sc-if value="{{ r.isRow }}" hint-placeholder-val="{{ true }}"><div style="{{ r.row }}">
 <sc-if value="{{ r.hasTime }}" hint-placeholder-val="{{ false }}"><div style="{{ r.tm }}"><sc-if value="{{ r.hasStage }}" hint-placeholder-val="{{ false }}"><span style="{{ r.dot }}"></span></sc-if>{{ r.time }}</div></sc-if><div style="{{ r.evCell }}"><sc-if value="{{ r.dotEv }}" hint-placeholder-val="{{ false }}"><span style="{{ r.dot }}"></span></sc-if><sc-if value="{{ r.d }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 500 500" aria-hidden="true" style="{{ r.icon }}"><path d="{{ r.d }}" fill="currentColor" fill-rule="{{ r.fr }}"></path></svg></sc-if><sc-if value="{{ r.src }}" hint-placeholder-val="{{ false }}"><img alt="" src="{{ r.src }}" style="{{ r.icon }}"></sc-if><span style="{{ r.evText }}">{{ r.label }}</span></div>
-<div style="{{ r.c }}">{{ r.grp }}</div><sc-if value="{{ r.hasStation }}" hint-placeholder-val="{{ false }}"><div style="{{ r.c }}">{{ r.station }}</div></sc-if>
+<div style="{{ r.cG }}">{{ r.grp }}</div><sc-if value="{{ r.hasStation }}" hint-placeholder-val="{{ false }}"><div style="{{ r.cS }}">{{ r.station }}</div></sc-if>
 <sc-if value="{{ r.showTask }}" hint-placeholder-val="{{ true }}"><div style="{{ r.t }}">{{ r.task }}</div></sc-if>
 </div></sc-if>
 </sc-for>
@@ -512,14 +512,15 @@ class Component extends DCLogic {
       // when the ranges would shrink the table by more than 15%.
       const ranged = hasTime && backRows.some((r) => r.time.indexOf('–') > 0);
       const timeCol = (range) => (hasTime ? Math.max(rf0 * (range ? 6.65 : 3.3), 7.5) + (hasStage ? rf0 * 1.05 : 0) : 0);
-      // The centred columns are at least as wide as their heading (110% wide, 0.08em apart; on bilingual badges the
-      // English line too, at 78%) and a gap, so that the headings stand evenly apart.
-      const headW = (tr, enT) => {
-        const w1 = (t) => (tw(t, W800) * 1.1 + t.length * 0.08) * hTr0;
-        return Math.max(w1(en ? enT : tr), showEn && !en ? w1(enT) * 0.78 : 0) + hTr0 * 1.6;
-      };
-      const others = [Math.max(rf0 * 3.4, 7, headW('GRUP', 'GROUP')),
-        hasStation ? Math.max(rf0 * 2.8, headW('MASA', 'STATION')) : 0, showTask ? Math.max(rf0 * 3.8, 8, headW('GÖREV', 'TASK'), Math.min((taskW + 0.3) * rf0, gw * 0.3)) : 0];
+      // The centred columns are as wide as their heading and a gap, so that the headings stand evenly apart. The
+      // headings' widths are measured (Archivo 700 at 110% width, 0.08em apart, in em; on bilingual badges the English
+      // line too, at 78%). When the task lists need more than the heading and the usual gap, every gap grows to
+      // theirs while the event column has room for it, so the gaps stay equal; else the task column alone grows.
+      const HW = { EVENT: 4.159, GROUP: 4.477, STATION: 5.302, TASK: 3.208, TIME: 3.009, 'BRANŞ': 4.316, GRUP: 3.51, 'GÖREV': 4.422, MASA: 3.568, SAAT: 3.205 };
+      const headW = (tr, enT) => Math.max(HW[en ? enT : tr], showEn && !en ? HW[enT] * 0.78 : 0) * hTr0;
+      const taskNeed = showTask ? Math.min((taskW + 0.3) * rf0, gw * 0.3) : 0;
+      const othersFor = (gap) => [headW('GRUP', 'GROUP') + gap, hasStation ? headW('MASA', 'STATION') + gap : 0,
+        showTask ? Math.max(headW('GÖREV', 'TASK') + gap, taskNeed) : 0];
       // A later round's row names it after the event: R2, R3, or Final for the last.
       const roundOf = (r) => (!r.round ? '' : r.round === 'f' ? ' Final' : ' R' + r.round);
       const SHORT = { fto: 'FTO', '333oh': 'OH', pyram: 'Pyra', sq1: 'SQ1', minx: 'Mega', '333bf': '3BLD', '444bf': '4BLD', '555bf': '5BLD', '333mbf': 'MBLD', '333fm': 'FMC' };
@@ -531,6 +532,9 @@ class Component extends DCLogic {
       const fill = this.props.rowFill;
       const pad = fill === 'zebra' || fill === 'stage' ? rf0 * 0.4 : 0;
       const gi = gw - 2 * pad;
+      const gap0 = hTr0 * 1.6;
+      const gapEq = Math.max(gap0, taskNeed - headW('GÖREV', 'TASK'));
+      const others = othersFor(gi - timeCol(false) - othersFor(gapEq).reduce((a, b) => a + b, 0) >= evNeed ? gapEq : gap0);
       const kOf = (range) => (hasTime || hasStage || hasStation ? Math.min(1, gi / ([timeCol(range)].concat(others).reduce((a, b) => a + b, 0) + evNeed)) : 1);
       const showRange = ranged && kOf(true) >= kOf(false) * 0.85;
       const fixed = [timeCol(showRange)].concat(others);
@@ -561,10 +565,14 @@ class Component extends DCLogic {
       const evText = { fontWeight: 600, textBox: 'trim-both cap alphabetic' };
       // A label longer than its column (Face Turning Octahedron on small cards) is set smaller to fit.
       const evW = gi - colTime - colGrp - colStn - (showTask ? colTask : 0) - iconR - rf * 0.5 - (hasStage && !hasTime ? rf * 1.05 : 0);
-      const fitLabel = (t) => (tw(t, W600) * rf <= evW ? evText : Object.assign({}, evText, { fontSize: mm(evW / tw(t, W600)) }));
-      // In a narrow table a long name that would drop below three quarters of the row text uses its short form.
-      const labelOf = (r) => { const t = (EVN[r.ev] || r.ev) + roundOf(r); return SHORT[r.ev] && tw(t, W600) * rf * 0.75 > evW ? SHORT[r.ev] + roundOf(r) : t; };
+      // A name too long for its column uses its short form, and the names are all one size: the row text's, or what
+      // the longest of them then fits at.
+      const labelOf = (r) => { const t = (EVN[r.ev] || r.ev) + roundOf(r); return SHORT[r.ev] && tw(t, W600) * rf > evW ? SHORT[r.ev] + roundOf(r) : t; };
+      const evFit = Math.min(1, evW / (rf * Math.max(...backRows.map((r) => tw(labelOf(r), W600)))));
+      const evTextSt = evFit < 1 ? Object.assign({}, evText, { fontSize: mm(rf * evFit) }) : evText;
       const cSt = { textAlign: 'center', fontWeight: 800, fontSize: mm(rf * 1.12), textBox: 'trim-both cap alphabetic' };
+      // 'None' is one grey dash everywhere: no group (not competing), no station (once there is a group), no task.
+      const noneSt = { textAlign: 'center', fontWeight: 400, fontSize: mm(rf), color: '#888888', textBox: 'trim-both cap alphabetic' };
       // A task list too wide for its column goes on more lines, set smaller until they fit the column and the row.
       // Tasks stay whole unless breaking one after a comma, into lines of even width, makes the text a fifth larger.
       const taskCell = (task) => {
@@ -635,7 +643,7 @@ class Component extends DCLogic {
         } : {
           isRow: true,
           hasStation: hasStation,
-          station: r.station,
+          station: r.station || (r.grp ? '–' : ''),
           showTask: showTask,
           hasTime: hasTime,
           hasStage: hasStage && fill !== 'stage',
@@ -645,8 +653,9 @@ class Component extends DCLogic {
           dotEv: hasStage && !hasTime && fill !== 'stage',
           row: rowOf(r),
           evCell: evCell,
-          evText: fitLabel(labelOf(r)),
-          c: cSt,
+          evText: evTextSt,
+          cG: r.grp === '–' ? noneSt : cSt,
+          cS: r.station.trim() ? cSt : noneSt,
           ...taskCell(taskText(r.task)),
           icon: iconSt,
           d: iconOf(r.ev)[0],
