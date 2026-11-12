@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { badgeComp, badgeLegend, badgePerson, badgeRows, dateRange, groupList, liveUrl, sheetGrid, sheetLayout, titleOf, titleParam } from './badge.ts';
+import { badgeComp, badgeLegend, badgePerson, badgeRows, blankBadgePerson, dateRange, groupList, liveUrl, sheetGrid, sheetLayout, titleOf, titleParam } from './badge.ts';
 import { EVENTS } from './i18n.ts';
 import { ICONS } from './icons.ts';
 import { qrPath } from './qr.ts';
@@ -184,6 +184,24 @@ test('sheet layout and cut lines', () => {
   const g = sheetGrid(105, 148, 3);
   assert.equal(`${g.pw}x${g.ph} ${g.cols}x${g.rows}`, '297x210 1x1');
   assert.equal(sheetGrid(110, 150, 50).cols, 0);
+});
+
+test('blank badge: each event\'s first round with its time, nothing to say who or where', () => {
+  const b = blankBadgePerson(w, acts, { times: true });
+  assert.deepEqual([b.name, b.wcaId, b.id, b.country, b.role, b.blank, b.legend], ['', '', '', '', 'competitor', true, []]);
+  assert.deepEqual(b.rows, [['333', '', '', '10:00', '2026-10-31', '', '', ''], ['pyram', '', '', '12:00', '2026-10-31', '', '', '']]);
+  // With stations the column stays, empty.
+  assert.equal(blankBadgePerson(w, acts, { stations: true }).rows[0][7], ' ');
+  // Fewest Moves is held as attempts (333fm-r1-a1, -a2): the round runs from the first's start to the last's end.
+  const fm = parseWcif(JSON.stringify({
+    formatVersion: '1.1', id: 'Fm2026', name: 'Fm 2026', events: [{ id: '333fm' }],
+    schedule: { startDate: '2026-10-31', numberOfDays: 1, venues: [{ id: 1, name: 'V', timezone: 'Europe/Istanbul', rooms: [{ id: 1, name: 'A', color: '#e30a17', activities: [
+      { id: 1, activityCode: '333fm-r1-a1', startTime: '2026-10-31T07:00:00Z', endTime: '2026-10-31T08:00:00Z' },
+      { id: 2, activityCode: '333fm-r1-a2', startTime: '2026-10-31T10:00:00Z', endTime: '2026-10-31T11:00:00Z' },
+    ] }] }] },
+    persons: [],
+  }));
+  assert.equal(blankBadgePerson(fm, indexActivities(fm), { times: true }).rows[0][3], '10:00–14:00');
 });
 
 test('dates without the year', () => {

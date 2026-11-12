@@ -17,6 +17,8 @@ export type BadgePerson = {
   rows: BadgeRow[];
   legend: [letter: string, tr: string, en: string][];
   title?: { en: string; tr: string; bg: string };
+  // A blank badge, to fill in by hand: the designs leave out the event icons and draw an empty box for the number.
+  blank?: boolean;
 };
 
 // A title of the organisers' own for some people (a photographer, say), in place of their role on the badge: its
@@ -72,13 +74,14 @@ export function badgeRows(
 ): BadgeRow[] {
   const own = scheduleOf(p, activities);
   const showStages = stages && multiStage(w);
-  // Each round's activities (one per stage it is held on), and each event's number of rounds.
+  // Each round's activities (one per stage it is held on, or per attempt in Fewest Moves: 333fm-r1-a1), and each
+  // event's number of rounds.
   const rounds = new Map<string, ActivityInfo[]>();
   const last = new Map<string, number>();
   for (const a of activities.values()) {
     const [e, r] = a.code.split('-');
     if (a.code !== a.parentCode || !r?.startsWith('r')) continue;
-    rounds.set(a.code, [...(rounds.get(a.code) ?? []), a]);
+    rounds.set(`${e}-${r}`, [...(rounds.get(`${e}-${r}`) ?? []), a]);
     last.set(e, Math.max(last.get(e) ?? 0, Number(r.slice(1))));
   }
   const span = (from: string, to: string, tz: string) => (to > from && !startsOnly ? `${clockOf(from, tz)}–${clockOf(to, tz)}` : clockOf(from, tz));
@@ -140,6 +143,17 @@ export function badgePerson(p: Person, w: Wcif, activities: Map<number, Activity
     rows,
     legend: badgeLegend(rows),
   };
+}
+
+// A blank badge for someone not in the WCIF (a walk-in, say), to fill in by hand: no name, WCA ID, country or number,
+// and on the back a row for every event's first round, as for a competitor in all of them, with its time (and stage)
+// as asked but no group, station or task. With stations, the station column stays, empty (a space, so that it shows).
+export function blankBadgePerson(w: Wcif, activities: Map<number, ActivityInfo>, options: BadgeOptions = {}): BadgePerson {
+  const p: Person = { registrantId: null, name: '', wcaUserId: 0, wcaId: null, countryIso2: '',
+    registration: { eventIds: w.events.map((e) => e.id), status: 'accepted', isCompeting: true }, assignments: [] };
+  const rows = badgeRows(p, w, activities, { ...options, hideStaffOnly: false })
+    .map((r): BadgeRow => [r[0], '', '', r[3], r[4], r[5], r[6], options.stations ? ' ' : '']);
+  return { name: '', localName: '', wcaId: '', id: '', country: '', countryName: '', flag: '', role: 'competitor', rows, legend: [], blank: true };
 }
 
 // Badge A reads the date as d1, badge B as date.

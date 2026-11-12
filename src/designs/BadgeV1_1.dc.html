@@ -234,7 +234,11 @@ class Component extends DCLogic {
     const parts = latin.split(/\s+/);
     const sur = parts.length > 1 ? parts[parts.length - 1] : '';
     const given = parts.length > 1 ? parts.slice(0, -1).join(' ') : latin;
-    const idStr = String(P.id);
+    // A blank badge (props.person.blank) is filled in by hand: no event icons, and in place of the number an empty
+    // white box, three figures wide, for a marker.
+    const blank = !!P.blank;
+    const idStr = blank ? '000' : String(P.id);
+    const writeBox = (f) => ({ boxSizing: 'border-box', width: mm(f * 2.4), height: mm(f * 1.1), margin: 0, background: '#ffffff', border: '0.35mm solid #1a1a1a', borderRadius: mm(0.8) });
     const hasId = !!P.wcaId;
     const rows = P.rows.map((r) => ({ ev: r[0], grp: r[1], task: r[2], time: r[3] || '', day: r[4] || '', stage: r[5] || '', stageColor: r[6] || '', station: r[7] || '', round: r[8] || '' }));
     // When and where (props.person.rows[3..6] from the kit: time, day, stage and its colour). The time column shows
@@ -257,7 +261,7 @@ class Component extends DCLogic {
     // Task letters other than J, S and R that this badge uses (props.person.legend: letter, Turkish, English); the
     // legend adds them after the three it always explains.
     const legendExtra = (P.legend || []).map((x) => ({ k: x[0], tr: x[1], en: x[2], both: x[1] + ' · ' + x[2] }));
-    const evs = rows.filter((r) => !r.round && r.grp !== '–').map((r) => r.ev);
+    const evs = blank ? [] : rows.filter((r) => !r.round && r.grp !== '–').map((r) => r.ev);
     // Events not drawn here take the kit's icon (props.icons: event id -> image URI), else the 3x3 one.
     const iconOf = (e) => ICON[e] || ((this.props.icons || {})[e] ? ['', 'nonzero', this.props.icons[e]] : ICON['333']);
 
@@ -267,7 +271,7 @@ class Component extends DCLogic {
       back: face === 'back',
       compName: COMP.name,
       dateL1: COMP.d1,
-      numText: idStr,
+      numText: blank ? '' : idStr,
       roleTrText: en ? R.en : R.tr,
       roleEnText: R.en,
       lang: en ? 'en' : 'tr'
@@ -430,6 +434,7 @@ class Component extends DCLogic {
       }
       g.numLabel = Object.assign({}, g.numLabel, { marginTop: mm(-fs(g.numLabel) * 0.145) });
       g.num = Object.assign({}, g.num, { marginBottom: mm(-fs(g.num) * 0.115), marginRight: mm(-fs(g.num) * rsbOf(idStr)) });
+      if (blank) g.num = Object.assign({}, g.num, writeBox(fs(g.num)));
     } else {
       const nbMax = clamp(s * 0.068, 3.2, 6.8);
       const numSizeB = nbMax * 1.18;
@@ -440,6 +445,7 @@ class Component extends DCLogic {
       g.bname = { fontSize: mm(nb), lineHeight: 1.08, fontWeight: 800, whiteSpace: 'nowrap', minWidth: 0, marginLeft: mm(-nb * lsbOf(latin)) };
       g.bnum = { fontSize: mm(numSizeB), lineHeight: 1.08, fontWeight: 800, fontStretch: '110%', marginRight: mm(-numSizeB * rsbOf(idStr)) };
       g.bnameText = latin;
+      if (blank) g.bnum = Object.assign({}, g.bnum, writeBox(numSizeB), { alignSelf: 'center' });
 
       const contentH = h - bandHB;
       const showQR = tier >= 2;

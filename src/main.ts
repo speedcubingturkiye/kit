@@ -2,7 +2,7 @@ import './style.css';
 import badgeA from './designs/BadgeV1_1.dc.html?dc';
 import badgeB from './designs/BadgeV2_1.dc.html?dc';
 import certDesign from './designs/SertifikaKarma.dc.html?dc';
-import { badgeComp, badgePerson, groupList, liveUrl, multiStage, sheetGrid, sheetLayout, titleOf, titleParam, type BadgeLang, type BadgeTitle } from './badge.ts';
+import { badgeComp, badgePerson, blankBadgePerson, groupList, liveUrl, multiStage, sheetGrid, sheetLayout, titleOf, titleParam, type BadgeLang, type BadgeTitle } from './badge.ts';
 import { certComp, certificates, participations, signers, type Cert } from './certificate.ts';
 import { renderDesign } from './dc.ts';
 import { EVENTS, TASK_LETTER, TEXT, countryName, fill, type Lang } from './i18n.ts';
@@ -35,6 +35,7 @@ const SIZES: Record<string, [number, number]> = {
 const sizeLabel = (k: string) => (/^\d+x\d+$/.test(k) ? `${k.replace('x', ' × ')} cm` : k);
 const BLEED = 3;
 const MARGINS = ['0', '3', '4', '5', '6', '8'];
+const MAX_BLANKS = 200;
 const PX = 96 / 25.4;
 const SVGNS = 'http://www.w3.org/2000/svg';
 const svgUri = (svg: string) => `data:image/svg+xml,${encodeURIComponent(svg)}`;
@@ -111,6 +112,8 @@ const badge = {
   // in mm on every edge for printers that cannot print to the edge (URL mg), the cards keeping their size.
   corner: query.get('al') === 'c',
   margin: MARGINS.includes(query.get('mg') ?? '') ? Number(query.get('mg')) : 0,
+  // Blank badges after everyone's, to fill in by hand for people not in the WCIF (URL bl, their number).
+  blanks: Math.min(MAX_BLANKS, Math.max(0, Math.floor(Number(query.get('bl')) || 0))),
   // Titles of the organisers' own (a photographer, say) for chosen people, in place of their role (URL ut, repeated).
   titles: query.getAll('ut').map(titleOf).filter((x): x is BadgeTitle => !!x),
   roles: Object.fromEntries(STRIP_ROLES.map((k, i) =>
@@ -203,6 +206,7 @@ function syncUrl() {
     if (badge.a4) q.set('a4', '1');
     if (badge.corner) q.set('al', 'c');
     if (badge.margin) q.set('mg', String(badge.margin));
+    if (badge.blanks) q.set('bl', String(badge.blanks));
     for (const x of badge.titles) q.append('ut', titleParam(x));
     if (STRIP_ROLES.some((k) => badge.roles[k] !== ROLE_COLORS[k])) q.set('rk', STRIP_ROLES.map((k) => badge.roles[k].slice(1)).join('-'));
   }
@@ -563,7 +567,8 @@ function cardSize() {
 }
 
 // Front and back of every person's badge.
-function cards(w: Wcif, people: Person[]): HTMLElement[][] {
+// Front and back of every person's badge, then of the blank ones.
+function cards(w: Wcif, people: Person[], blanks = 0): HTMLElement[][] {
   const activities = indexActivities(w);
   const shared = {
     ...cardSize(), lang: badge.lang, comp: badgeComp(w, badge.lang), icons: ICON_URIS,
@@ -578,7 +583,10 @@ function cards(w: Wcif, people: Person[]): HTMLElement[][] {
     const person = badgePerson(p, w, activities, badge.lang, flag ? svgUri(flag) : '', options);
     const props = { ...shared, person: title ? { ...person, title: { en: title.en, tr: title.tr, bg: title.color } } : person };
     return (['front', 'back'] as const).map((face) => renderDesign(DESIGNS[badge.design], { ...props, face }));
-  });
+  }).concat(Array.from({ length: blanks }, () => {
+    const props = { ...shared, person: blankBadgePerson(w, activities, options) };
+    return (['front', 'back'] as const).map((face) => renderDesign(DESIGNS[badge.design], { ...props, face }));
+  }));
 }
 
 function select(label: string, options: [string, string][], value: string, set: (v: string) => void) {
@@ -674,21 +682,26 @@ function badgeView(w: Wcif, people: Person[]) {
   const pick = document.createElement('select');
   pick.id = 'preview-pick';
   people.forEach((p, i) => pick.append(new Option(p.registrantId == null ? p.name : `${p.registrantId} · ${p.name}`, String(i))));
+  const blankOption = new Option(t('blankBadge'), String(people.length));
+  pick.append(blankOption);
   const count = el('span', 'count');
   const draw = async () => {
     syncUrl();
     const { w: cw, h: ch } = cardSize();
     Object.assign(preview.dataset, { w: String(cw), h: String(ch) });
     const grid = layout();
-    const sheetCount = Math.ceil(people.length / (grid.cols * grid.rows));
+    // Everyone's badges and the blank ones; the preview shows one blank after the people.
+    const n = people.length + badge.blanks;
+    const shown = people.length + (badge.blanks ? 1 : 0);
+    const sheetCount = Math.ceil(n / (grid.cols * grid.rows));
     a4Box.hidden = homeSize() || !fitsA4();
     cutsBox.hidden = !onSheets();
     cutPageBox.hidden = badge.corner;
     sheetBox.hidden = a4Box.hidden && cutsBox.hidden;
     notes.replaceChildren(
       el('p', 'out', onSheets()
-        ? fill(t('outSheets'), { n: people.length, pages: sheetCount }) + (cutPageOn() ? t('outCutPage') : '')
-        : fill(t('outShop'), { n: people.length, pages: people.length * 2, w: (cw + 2 * BLEED).toLocaleString(lang), h: (ch + 2 * BLEED).toLocaleString(lang) })),
+        ? fill(t('outSheets'), { n, pages: sheetCount }) + (cutPageOn() ? t('outCutPage') : '')
+        : fill(t('outShop'), { n, pages: n * 2, w: (cw + 2 * BLEED).toLocaleString(lang), h: (ch + 2 * BLEED).toLocaleString(lang) })),
       el('p', 'hint', t(onSheets() ? 'printSheets' : 'printShop')),
     );
     if (onSheets() && cutPageOn()) notes.append(el('p', 'hint', fill(t('printCutPage'), { pages: sheetCount })));
@@ -698,26 +711,40 @@ function badgeView(w: Wcif, people: Person[]) {
       notes.append(el('p', 'hint', fill(t('qrNote'), { url: q.url })
         + (badge.qrLink && !q.own ? ' ' + t('qrTooLong') : !q.own && scoretaking === 'wca_live' ? ' ' + t('qrWcaLive') : '')));
     }
-    if (!people.length) return;
-    previewAt = Math.min(previewAt, people.length - 1);
+    blankOption.hidden = !badge.blanks;
+    if (!shown) return;
+    previewAt = Math.min(previewAt, shown - 1);
     pick.value = String(previewAt);
-    count.textContent = `${previewAt + 1} / ${people.length}`;
+    count.textContent = `${previewAt + 1} / ${shown}`;
     await loadFlags();
     const pair = el('div', 'pair');
-    pair.append(...cards(w, [people[previewAt]])[0]);
+    pair.append(...(previewAt < people.length ? cards(w, [people[previewAt]]) : cards(w, [], 1))[0]);
     preview.replaceChildren(pair);
     fitPreview(preview);
   };
   const arrow = (text: string, label: string, step: number) =>
-    stepButton(text, label, () => { previewAt = (previewAt + step + people.length) % people.length; draw(); });
+    stepButton(text, label, () => { const k = people.length + (badge.blanks ? 1 : 0); previewAt = (previewAt + step + k) % k; draw(); });
   pick.addEventListener('change', () => { previewAt = Number(pick.value); draw(); });
-  if (people.length) {
+  if (people.length || badge.blanks) {
     const label = el('label', '', t('preview'));
     label.setAttribute('for', pick.id);
     const row = el('div', 'nav-row');
     row.append(arrow('‹', t('prev'), -1), pick, arrow('›', t('next'), 1), count);
     nav.append(label, row);
   }
+  // How many blank badges to add after everyone's.
+  const blankCount = el('label');
+  const blankInput = document.createElement('input');
+  blankInput.type = 'number';
+  blankInput.min = '0';
+  blankInput.max = String(MAX_BLANKS);
+  blankInput.value = String(badge.blanks);
+  blankInput.addEventListener('change', () => {
+    badge.blanks = Math.min(MAX_BLANKS, Math.max(0, Math.floor(Number(blankInput.value)) || 0));
+    blankInput.value = String(badge.blanks);
+    draw();
+  });
+  blankCount.append(el('span', '', t('blanks')), blankInput);
   const opts = el('div', 'opts');
   opts.append(
     select(t('design'), Object.keys(DESIGNS).map((k) => [k, k]), badge.design, (v) => { badge.design = v as keyof typeof DESIGNS; draw(); }),
@@ -729,6 +756,7 @@ function badgeView(w: Wcif, people: Person[]) {
     // A stage tint only where there is more than one stage.
     select(t('rowFill'), [['', t('fillNone')], ['zebra', t('fillZebra')], ...(multiStage(w) ? [['stage', t('fillStage')] as [string, string]] : [])],
       badge.rowFill, (v) => { badge.rowFill = v as typeof badge.rowFill; draw(); }),
+    blankCount,
   );
   // Badgifier's options, by face; stages only when the competition uses more than one. The QR's own link and caption
   // come next when the QR is on.
@@ -887,7 +915,7 @@ const layout = () => { const { w, h } = cardSize(); return sheetLayout(w, h, { m
 async function printBadges(w: Wcif, people: Person[]) {
   const { w: cw, h: ch } = cardSize();
   await loadFlags();
-  const faces = cards(w, people);
+  const faces = cards(w, people, badge.blanks);
   const pages = onSheets() ? sheets(faces, cw) : shopPages(faces.flat(), cw, ch);
   $('print').replaceChildren(...pages);
   // The bleed is measured, so Archivo (both subsets) must be in before the layout is read.
