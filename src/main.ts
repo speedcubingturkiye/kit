@@ -34,7 +34,9 @@ const SIZES: Record<string, [number, number]> = {
 };
 const sizeLabel = (k: string) => (/^\d+x\d+$/.test(k) ? `${k.replace('x', ' × ')} cm` : k);
 const BLEED = 3;
-const MARGINS = ['0', '3', '4', '5', '6', '8'];
+// The sheet margin in mm: any from 0 to 20 in half millimetres, typed or picked from the usual ones.
+const MARGINS = ['0', '1', '2', '3', '4', '5', '6', '8'];
+const marginOf = (v: unknown) => { const n = Math.round(Number(v) * 2) / 2; return Number.isFinite(n) ? Math.min(20, Math.max(0, n)) : 0; };
 const MAX_BLANKS = 200;
 const PX = 96 / 25.4;
 const SVGNS = 'http://www.w3.org/2000/svg';
@@ -111,7 +113,7 @@ const badge = {
   // On sheets: the pairs centred, or packed in the top left corner for the fewest cuts (URL al=c), and a blank margin
   // in mm on every edge for printers that cannot print to the edge (URL mg), the cards keeping their size.
   corner: query.get('al') === 'c',
-  margin: MARGINS.includes(query.get('mg') ?? '') ? Number(query.get('mg')) : 0,
+  margin: marginOf(query.get('mg')),
   // Blank badges after everyone's, to fill in by hand for people not in the WCIF (URL bl, their number).
   blanks: Math.min(MAX_BLANKS, Math.max(0, Math.floor(Number(query.get('bl')) || 0))),
   // Titles of the organisers' own (a photographer, say) for chosen people, in place of their role (URL ut, repeated).
@@ -808,12 +810,22 @@ function badgeView(w: Wcif, people: Person[]) {
   starts.hidden = !badge.times;
   // Whether the other sizes go on A4 sheets, and the sheet's cut lines, shown only for the sizes printed on sheets.
   const a4Box = flag('a4', 'onA4');
+  // The margin: a number field with the usual values offered (0 for borderless printing).
+  const marginField = el('label');
+  const marginInput = document.createElement('input');
+  Object.assign(marginInput, { type: 'number', min: '0', max: '20', step: '0.5', value: String(badge.margin), title: t('marginNone') });
+  const marginList = document.createElement('datalist');
+  marginList.id = 'sheet-margins';
+  marginList.append(...MARGINS.map((m) => new Option(m === '0' ? t('marginNone') : `${m} mm`, m)));
+  marginInput.setAttribute('list', marginList.id);
+  marginInput.addEventListener('change', () => { badge.margin = marginOf(marginInput.value); marginInput.value = String(badge.margin); draw(); });
+  marginField.append(el('span', '', `${t('margin')} (mm)`), marginInput, marginList);
   const cutsBox = el('div');
   // The cut-line page needs lines symmetric about the sheet's middle, which the corner's are not.
   const cutPageBox = flag('cutPage', 'cutPage');
   cutsBox.append(
     select(t('align'), [['', t('alignCentre')], ['c', t('alignCorner')]], badge.corner ? 'c' : '', (v) => { badge.corner = v === 'c'; draw(); }),
-    select(t('margin'), MARGINS.map((m) => [m, m === '0' ? t('marginNone') : `${m} mm`]), String(badge.margin), (v) => { badge.margin = Number(v); draw(); }),
+    marginField,
     flag('cuts', 'showCuts'), cutPageBox,
   );
   const sheetBox = box(t('sheet'), a4Box, cutsBox);
