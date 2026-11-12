@@ -2,7 +2,7 @@ import './style.css';
 import badgeA from './designs/BadgeV1_1.dc.html?dc';
 import badgeB from './designs/BadgeV2_1.dc.html?dc';
 import certDesign from './designs/SertifikaKarma.dc.html?dc';
-import { badgeComp, badgePerson, groupList, liveUrl, multiStage, sheetGrid, titleOf, titleParam, type BadgeLang, type BadgeTitle } from './badge.ts';
+import { badgeComp, badgePerson, groupList, liveUrl, multiStage, sheetCuts, sheetGrid, titleOf, titleParam, type BadgeLang, type BadgeTitle } from './badge.ts';
 import { certComp, certificates, participations, signers, type Cert } from './certificate.ts';
 import { renderDesign } from './dc.ts';
 import { EVENTS, TASK_LETTER, TEXT, countryName, fill, type Lang } from './i18n.ts';
@@ -103,13 +103,15 @@ const badge = {
   // On A6 and A7 sheets: the cut lines between the people, on unless unticked, and a last page of the lines alone, to
   // print on the sheets' backs and cut from there, leaving the badges clean (off unless ticked).
   cuts: query.get('cut') !== '0',
+  // The other sizes on A4 sheets too, as A6 and A7 are, in place of the print shop's single cards (off unless ticked).
+  a4: query.get('a4') === '1',
   cutPage: query.get('cutp') === '1',
   // Titles of the organisers' own (a photographer, say) for chosen people, in place of their role (URL ut, repeated).
   titles: query.getAll('ut').map(titleOf).filter((x): x is BadgeTitle => !!x),
   roles: Object.fromEntries(STRIP_ROLES.map((k, i) =>
     [k, /^[0-9a-f]{6}$/i.test(rk[i] ?? '') ? `#${rk[i].toLowerCase()}` : ROLE_COLORS[k]])) as Record<StripRole, string>,
 };
-type BadgeFlag = 'times' | 'startsOnly' | 'stages' | 'stations' | 'hideStaffOnly' | 'localNames' | 'tasks' | 'number' | 'qr' | 'hole' | 'cuts' | 'cutPage';
+type BadgeFlag = 'times' | 'startsOnly' | 'stages' | 'stations' | 'hideStaffOnly' | 'localNames' | 'tasks' | 'number' | 'qr' | 'hole' | 'cuts' | 'cutPage' | 'a4';
 // Certificate designs: the outer one draws the page (ground, frame, bands), the inner one writes on it; any of A-E
 // goes with any. event narrows the preview and the print to one event ('' for all).
 const CERT_DESIGNS = ['A', 'B', 'C', 'D', 'E'] as const;
@@ -193,6 +195,7 @@ function syncUrl() {
     if (!badge.hole) q.set('h', '0');
     if (!badge.cuts) q.set('cut', '0');
     if (badge.cutPage) q.set('cutp', '1');
+    if (badge.a4) q.set('a4', '1');
     for (const x of badge.titles) q.append('ut', titleParam(x));
     if (STRIP_ROLES.some((k) => badge.roles[k] !== ROLE_COLORS[k])) q.set('rk', STRIP_ROLES.map((k) => badge.roles[k].slice(1)).join('-'));
   }
@@ -671,7 +674,9 @@ function badgeView(w: Wcif, people: Person[]) {
     Object.assign(preview.dataset, { w: String(cw), h: String(ch) });
     const grid = sheetGrid(cw, ch);
     const sheetCount = Math.ceil(people.length / (grid.cols * grid.rows));
-    sheetBox.hidden = !onSheets();
+    a4Box.hidden = homeSize() || !fitsA4();
+    cutsBox.hidden = !onSheets();
+    sheetBox.hidden = a4Box.hidden && cutsBox.hidden;
     notes.replaceChildren(
       el('p', 'out', onSheets()
         ? fill(t('outSheets'), { n: people.length, pages: sheetCount }) + (badge.cutPage ? t('outCutPage') : '')
@@ -764,8 +769,11 @@ function badgeView(w: Wcif, people: Person[]) {
   const starts = flag('startsOnly', 'startsOnly');
   starts.classList.add('sub');
   starts.hidden = !badge.times;
-  // The A4 sheet's cut lines, shown only for the sizes printed on sheets.
-  const sheetBox = box(t('sheet'), flag('cuts', 'showCuts'), flag('cutPage', 'cutPage'));
+  // Whether the other sizes go on A4 sheets, and the sheet's cut lines, shown only for the sizes printed on sheets.
+  const a4Box = flag('a4', 'onA4');
+  const cutsBox = el('div');
+  cutsBox.append(flag('cuts', 'showCuts'), flag('cutPage', 'cutPage'));
+  const sheetBox = box(t('sheet'), a4Box, cutsBox);
   const checks = el('div', 'checks');
   checks.append(
     box(t('card'), flag('hole', 'showHole')),
@@ -851,8 +859,11 @@ function badgeView(w: Wcif, people: Person[]) {
   return [opts, checks, qrFields, titles, notes, nav, preview];
 }
 
-// A6 and A7 go on A4 sheets to print at home; the other sizes go to the print shop as single cards with bleed.
-const onSheets = () => badge.size === 'A6' || badge.size === 'A7';
+// A6 and A7 go on A4 sheets to print at home; the other sizes go to the print shop as single cards with bleed, or
+// on A4 sheets too when asked and a pair fits on one (9 × 12 cm: two to a sheet).
+const homeSize = () => badge.size === 'A6' || badge.size === 'A7';
+const fitsA4 = () => { const { w, h } = cardSize(); const g = sheetGrid(w, h); return g.cols * g.rows > 0; };
+const onSheets = () => homeSize() || (badge.a4 && fitsA4());
 
 async function printBadges(w: Wcif, people: Person[]) {
   const { w: cw, h: ch } = cardSize();
@@ -895,20 +906,22 @@ function shopPages(cards: HTMLElement[], cw: number, ch: number) {
 // A4 sheets, as in Badgifier: each person's back and front side by side at real size, edge to edge, on whichever
 // A4 orientation holds more people. Cut along the dashed lines, then fold each piece in the middle. The lines may be
 // left off the sheets, and a last page of the lines alone added, to print on the sheets' backs: they lie on the
-// cells' edges, symmetric about the sheet's middle, so they meet the fronts' whichever end of a sheet goes back in.
+// cells' or the pairs' edges (sheetCuts), symmetric about the sheet's middle, so they meet the fronts' whichever end
+// of a sheet goes back in.
 function sheets(faces: HTMLElement[][], cw: number, ch: number) {
   const { pw, ph, cols, rows } = sheetGrid(cw, ch);
   pageStyle.textContent = `@page { size: ${pw}mm ${ph}mm; margin: 0; }`;
   const cellW = pw / cols;
   const cellH = ph / rows;
+  const { xs, ys } = sheetCuts(cw, ch);
   const cut = (cls: string, side: 'left' | 'top', mm: number) => {
     const d = el('div', `cut ${cls}`);
     d.style[side] = `${mm}mm`;
     return d;
   };
   const withCuts = (sheet: HTMLElement) => {
-    for (let c = 1; c < cols; c++) sheet.append(cut('cut-v', 'left', c * cellW));
-    for (let r = 1; r < rows; r++) sheet.append(cut('cut-h', 'top', r * cellH));
+    for (const x of xs) sheet.append(cut('cut-v', 'left', x));
+    for (const y of ys) sheet.append(cut('cut-h', 'top', y));
     return sheet;
   };
   const out: HTMLElement[] = [];

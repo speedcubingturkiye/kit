@@ -170,6 +170,21 @@ export function sheetGrid(w: number, h: number) {
   return portrait.cols * portrait.rows >= landscape.cols * landscape.rows ? portrait : landscape;
 }
 
+// The cut lines on that sheet, in mm from its left (xs) and top (ys). Along an axis where the pairs fill their cells
+// (A6, A7) the lines lie between the cells; where they leave a margin (9 × 12 cm) they lie on every pair's edges, so
+// that cutting along all of them leaves each pair clean. The pairs are centred, so the lines are symmetric either way.
+export function sheetCuts(w: number, h: number) {
+  const { pw, ph, cols, rows } = sheetGrid(w, h);
+  const axis = (page: number, n: number, size: number) => {
+    const cell = page / n;
+    const gap = (cell - size) / 2;
+    return gap < 0.5
+      ? Array.from({ length: n - 1 }, (_, i) => (i + 1) * cell)
+      : Array.from({ length: n }, (_, i) => [i * cell + gap, (i + 1) * cell - gap]).flat();
+  };
+  return { xs: axis(pw, cols, 2 * w), ys: axis(ph, rows, h) };
+}
+
 // The back face's QR: the competition's live results. WCA Live's link works once the delegate has imported the
 // competition; the WCA site's own live results need no import. Other software gets the competition page.
 export function liveUrl(id: string, scoretaking: string | null): string {

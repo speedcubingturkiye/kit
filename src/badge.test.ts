@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { badgeComp, badgeLegend, badgePerson, badgeRows, dateRange, groupList, liveUrl, sheetGrid, titleOf, titleParam } from './badge.ts';
+import { badgeComp, badgeLegend, badgePerson, badgeRows, dateRange, groupList, liveUrl, sheetCuts, sheetGrid, titleOf, titleParam } from './badge.ts';
 import { EVENTS } from './i18n.ts';
 import { ICONS } from './icons.ts';
 import { qrPath } from './qr.ts';
@@ -164,6 +164,13 @@ test('A4 sheets: A6 two people a sheet, A7 four, in either orientation', () => {
   assert.equal(grid(148, 105), '297x210 1x2');
   assert.equal(grid(74, 105), '297x210 2x2');
   assert.equal(grid(105, 74), '210x297 1x4');
+  assert.equal(grid(90, 120), '210x297 1x2');
+});
+
+test('sheet cut lines', () => {
+  assert.deepEqual(sheetCuts(105, 148), { xs: [], ys: [148.5] });
+  assert.deepEqual(sheetCuts(74, 105), { xs: [148.5], ys: [105] });
+  assert.deepEqual(sheetCuts(90, 120), { xs: [15, 195], ys: [14.25, 134.25, 162.75, 282.75] });
 });
 
 test('dates without the year', () => {
