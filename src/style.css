@@ -106,6 +106,9 @@ label.swatch { display: flex; align-items: center; gap: 6px; font-size: 14px; fo
 .chip .step { width: 22px; height: 22px; font-size: 14px; border: 0; }
 .checks { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-start; }
 .checks fieldset { margin: 0; padding: 4px 10px 8px; border: 1px solid var(--hair); display: grid; gap: 4px; }
+.checks fieldset.event-signs { grid-template-columns: auto auto auto; align-items: center; gap: 4px 10px; }
+.event-signs .head { font-size: 12px; color: var(--ink-2); }
+.event-signs .event-name { font-weight: 600; }
 .checks legend { padding: 0 4px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-2); }
 .qr-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px 16px; max-width: 760px; }
 .qr-fields label { display: grid; gap: 4px; font-size: 13px; }

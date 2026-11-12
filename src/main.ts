@@ -3,7 +3,7 @@ import badgeA from './designs/BadgeV1_1.dc.html?dc';
 import badgeB from './designs/BadgeV2_1.dc.html?dc';
 import certDesign from './designs/SertifikaKarma.dc.html?dc';
 import { badgeComp, badgePerson, blankBadgePerson, groupList, liveUrl, multiStage, sheetGrid, sheetLayout, titleOf, titleParam, type BadgeLang, type BadgeTitle } from './badge.ts';
-import { certComp, certificates, participations, signers, type Cert } from './certificate.ts';
+import { blankParticipation, blankPodiums, certComp, certificates, participations, signers, type Cert, type Sign } from './certificate.ts';
 import { renderDesign } from './dc.ts';
 import { EVENTS, TASK_LETTER, TEXT, countryName, fill, type Lang } from './i18n.ts';
 import { ICONS } from './icons.ts';
@@ -66,8 +66,10 @@ let loadedAt = new Date();
 // Podiums for the certificates: from the WCIF as loaded, or refreshed (from WCA Live for competitions scored there,
 // from the posted results once they are posted).
 let podiums: { list: Podium[]; source: 'wcif' | 'live' | 'results'; at: Date; note?: keyof typeof TEXT.tr } | null = null;
-// Who signs the certificates, picked per competition; the first delegate and organiser by default.
-let signPick: { delegate: string; organizer: string } | null = null;
+// Who signs the certificates, picked per competition; the first delegate and organiser by default. Each event's
+// podium certificates may have their own (byEvent, unset for the ones above), and someone may sign on behalf of an
+// organiser that is an organisation, such as a regional organisation (behalf: the organiser's name to the signer's).
+let signPick: { delegate: string; organizer: string; byEvent: Record<string, { delegate?: string; organizer?: string }>; behalf: Record<string, string> } | null = null;
 // The view and the badge and certificate options live in the address, so a link or a reload keeps them.
 const query = new URLSearchParams(location.search);
 type View = 'people' | 'badges' | 'certificates';
@@ -137,6 +139,8 @@ const certOpts = {
   letters: query.get('cl') === 'normal' ? 'normal' : 'condensed',
   text: (['none', 'full'].includes(query.get('ct') ?? '') ? query.get('ct') : 'short') as 'short' | 'none' | 'full',
   certLang: query.get('cg') === 'tr-en' ? 'tr-en' : 'en',
+  // Blank participation certificates after everyone's, to fill in by hand (URL cbl, their number).
+  blanks: Math.min(MAX_BLANKS, Math.max(0, Math.floor(Number(query.get('cbl')) || 0))),
 };
 // The colour in place of SCTR red and an uploaded logo in place of SCTR's, on badges and certificates alike. The logo
 // is kept in memory only, with its file so that a rebuilt view's file input still shows it. On a coloured band (the
@@ -182,6 +186,7 @@ function syncUrl() {
     if (certOpts.letters === 'normal') q.set('cl', 'normal');
     if (certOpts.text !== 'short') q.set('ct', certOpts.text);
     if (certOpts.certLang === 'tr-en') q.set('cg', 'tr-en');
+    if (certOpts.blanks) q.set('cbl', String(certOpts.blanks));
   }
   if (view === 'badges') {
     q.set('v', 'badges');
@@ -332,7 +337,16 @@ function certView(w: Wcif) {
   const events = document.createElement('select');
   const { delegates, organizers } = signers(w);
   // One person can be both; the organiser line then defaults to someone else when there is anyone.
-  const signs = (signPick ??= { delegate: delegates[0] ?? '', organizer: organizers.find((n) => n !== delegates[0]) ?? organizers[0] ?? '' });
+  const signs = (signPick ??= { delegate: delegates[0] ?? '', organizer: organizers.find((n) => n !== delegates[0]) ?? organizers[0] ?? '', byEvent: {}, behalf: {} });
+  // The organiser's line: theirs, or the name of whoever signs on their behalf, with whom they sign for.
+  const organizerSign = (o: string): Sign => {
+    const by = signs.behalf[o]?.trim();
+    return by ? [by, `ON BEHALF OF ${o.toLocaleUpperCase('en')}`, `${o.toLocaleUpperCase('tr')} ADINA`] : [o, 'ORGANIZER'];
+  };
+  const signsFor = (event: string): Sign[] => {
+    const own = signs.byEvent[event] ?? {};
+    return [[own.delegate ?? signs.delegate, 'WCA DELEGATE'], organizerSign(own.organizer ?? signs.organizer)];
+  };
   const names = (people: string[]): [string, string][] => [...people.map((n): [string, string] => [n, n]), ['', '—']];
   const time = (d: Date) => d.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' });
   const evName = (id: string) => EVENTS[id]?.[lang === 'tr' ? 1 : 2] ?? id;
@@ -347,17 +361,26 @@ function certView(w: Wcif) {
     await loadFlags();
     // Participation certificates go to every competitor; the event narrows them to those in it.
     const part = certOpts.kind === 'part';
-    const args = [certComp(cur, city), [[signs.delegate, 'WCA DELEGATE'], [signs.organizer, 'ORGANIZER']] as [string, string][],
+    const args = [certComp(cur, city), signsFor(''),
       (c: string) => (flags?.[c] ? svgUri(flags[c]) : ''), (e: string) => ICON_URIS[e] ?? ''] as const;
-    const all = part ? participations(cur, ...args) : certificates(shown, ...args);
+    // Blank ones come after everyone's: participation ones only with all events shown, podium ones for every event
+    // (or the one chosen), finished or not.
+    const blanks = part ? Array.from({ length: certOpts.blanks }, () => blankParticipation(args[0], args[1]))
+      : blankPodiums(cur, order.includes(certOpts.event) ? [certOpts.event] : order, certOpts.blanks, args[0], args[1], args[3]);
+    const all = [...(part ? participations(cur, ...args) : certificates(shown, ...args)), ...blanks]
+      .map((c) => (c.part ? c : { ...c, signs: signsFor(c.event) }));
     const inEvent = (c: Cert, e: string) => (part ? (c.events ?? []).some((x) => x.id === e) : c.event === e);
-    const done = part ? cur.events.map((e) => e.id).filter((e) => all.some((c) => inEvent(c, e))) : [...new Set(all.map((c) => c.event))];
+    const done = part ? cur.events.map((e) => e.id).filter((e) => all.some((c) => inEvent(c, e))) : cur.events.map((e) => e.id).filter((e) => all.some((c) => c.event === e));
     if (!done.includes(certOpts.event)) certOpts.event = '';
     syncUrl();
     events.replaceChildren(new Option(t('allEvents'), ''), ...done.map((e) => new Option(evName(e), e)));
     events.value = certOpts.event;
     certs = certOpts.event ? all.filter((c) => inEvent(c, certOpts.event)) : all;
     finals.forEach((x) => { x.hidden = part; });
+    byEventBox.hidden = part || done.length < 2;
+    byEventBox.replaceChildren(el('legend', '', t('signByEvent')), el('span'), el('span', 'head', t('signDelegate')), el('span', 'head', t('signOrganizer')),
+      ...done.flatMap(eventSigns));
+    certBlankText.textContent = t(part ? 'certBlanks' : 'certBlanksPodium');
     notes.replaceChildren(
       el('p', 'out', certs.length ? fill(t('outCerts'), { n: certs.length }) : t(part ? 'noParts' : 'noCerts')),
       el('p', 'hint', t('printCerts')),
@@ -369,7 +392,7 @@ function certView(w: Wcif) {
       return;
     }
     certAt = Math.min(certAt, certs.length - 1);
-    pick.replaceChildren(...certs.map((c, i) => new Option(c.part ? c.name : `${evName(c.event)} · ${c.place} · ${c.name}`, String(i))));
+    pick.replaceChildren(...certs.map((c, i) => new Option(c.part ? c.name || t('blankCert') : `${evName(c.event)} · ${c.place} · ${c.name || t('blankCert')}`, String(i))));
     pick.value = String(certAt);
     count.textContent = `${certAt + 1} / ${certs.length}`;
     const pair = el('div', 'pair');
@@ -389,6 +412,49 @@ function certView(w: Wcif) {
   evLabel.append(el('span', '', t('certEvent')), events);
   events.addEventListener('change', () => { certOpts.event = events.value; certAt = 0; draw(); });
   const designs = CERT_DESIGNS.map((d): [string, string] => [d, d]);
+  // Each event's signers, the ones above unless picked: every podium certificate prints in one go.
+  const byEventBox = el('fieldset', 'event-signs');
+  // A row of the table: the event, then its delegate and organiser.
+  const eventSigns = (e: string) => {
+    const own = (signs.byEvent[e] ??= {});
+    const pickOne = (label: string, people: string[], key: 'delegate' | 'organizer') => {
+      const s = document.createElement('select');
+      s.setAttribute('aria-label', `${evName(e)} · ${label}`);
+      for (const [v, text] of [['*', t('signAbove')], ...names(people)]) s.append(new Option(text, v, false, v === (own[key] ?? '*')));
+      s.addEventListener('change', () => {
+        if (s.value === '*') delete own[key];
+        else own[key] = s.value;
+        draw();
+      });
+      return s;
+    };
+    return [el('span', 'event-name', evName(e)), pickOne(t('signDelegate'), delegates, 'delegate'), pickOne(t('signOrganizer'), organizers, 'organizer')];
+  };
+  // Someone signing on behalf of an organiser, for an organiser that is an organisation (a regional organisation,
+  // say), which cannot sign itself.
+  const behalfBox = el('fieldset');
+  behalfBox.append(el('legend', '', t('signBehalf')), ...organizers.map((o) => {
+    const l = el('label');
+    const i = document.createElement('input');
+    Object.assign(i, { type: 'text', value: signs.behalf[o] ?? '', placeholder: t('signBehalfHint'), spellcheck: false });
+    i.addEventListener('change', () => { signs.behalf[o] = i.value.trim(); draw(); });
+    l.append(el('span', '', fill(t('signBehalfFor'), { name: o })), i);
+    return l;
+  }));
+  behalfBox.hidden = !organizers.length;
+  const signBoxes = el('div', 'checks');
+  signBoxes.append(byEventBox, behalfBox);
+  // How many blank participation certificates to add after everyone's.
+  const certBlanks = el('label');
+  const certBlankInput = document.createElement('input');
+  Object.assign(certBlankInput, { type: 'number', min: '0', max: String(MAX_BLANKS), value: String(certOpts.blanks) });
+  certBlankInput.addEventListener('change', () => {
+    certOpts.blanks = Math.min(MAX_BLANKS, Math.max(0, Math.floor(Number(certBlankInput.value)) || 0));
+    certBlankInput.value = String(certOpts.blanks);
+    draw();
+  });
+  const certBlankText = el('span', '', t('certBlanks'));
+  certBlanks.append(certBlankText, certBlankInput);
   // The colour and the logo first, then the chosen designs' own options: B's frame when B is outside, C's capitals
   // and A's sentence and language when they are inside.
   const brandRow = brandFields(draw);
@@ -415,6 +481,7 @@ function certView(w: Wcif) {
     evLabel,
     select(t('signDelegate'), names(delegates), signs.delegate, (v) => { signs.delegate = v; draw(); }),
     select(t('signOrganizer'), names(organizers), signs.organizer, (v) => { signs.organizer = v; draw(); }),
+    certBlanks,
     go,
   );
   const bar = el('div', 'opts');
@@ -443,7 +510,7 @@ function certView(w: Wcif) {
   refresh.addEventListener('click', update);
   draw();
   if ((resultsPosted || scoretaking === 'wca_live') && !podiums) update();
-  return [bar, opts, custom, notes, nav, preview, ...finals];
+  return [bar, opts, custom, signBoxes, notes, nav, preview, ...finals];
 }
 
 // A4 landscape, one certificate a page, edge to edge.

@@ -1,7 +1,7 @@
 // Run with `npm test`. Fictional people and finals.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { certComp, certificates, participations, signers } from './certificate.ts';
+import { blankPodiums, certComp, certificates, participations, signers } from './certificate.ts';
 import type { Podium } from './podium.ts';
 import type { Wcif } from './wcif.ts';
 
@@ -85,4 +85,15 @@ test('participation: accepted competitors by name with their events; once there 
     { personId: 1, ranking: null, attempts: [{ value: -2 }], best: -2, average: -2 },
   ];
   assert.deepEqual(participations(w, comp, signs, () => '', () => '').map((c) => [c.name, c.events?.map((e) => e.id)]), [['Ömer Su', ['333']]]);
+});
+
+test('blank podium certificates: each place for each event asked, with the kind of result of its final and no name or result', () => {
+  const w = { ...wcif('2026-10-31', 2), events: [{ id: '333', rounds: [{ id: '333-r1', format: 'a' }] }, { id: '666', rounds: [{ id: '666-r1', format: 'm' }] }, { id: '333bf', rounds: [{ id: '333bf-r1', format: '3' }] }] } as unknown as Wcif;
+  const comp = certComp(w, '');
+  const certs = blankPodiums(w, ['333bf', '666'], 2, comp, [], () => '');
+  assert.deepEqual(certs.map((c) => `${c.event} ${c.place} ${c.kind}`), [
+    '666 1 mean', '666 1 mean', '666 2 mean', '666 2 mean', '666 3 mean', '666 3 mean',
+    '333bf 1 single', '333bf 1 single', '333bf 2 single', '333bf 2 single', '333bf 3 single', '333bf 3 single']);
+  assert.ok(certs.every((c) => c.blank && !c.name && !c.result && !c.part));
+  assert.equal(blankPodiums(w, ['333'], 0, comp, [], () => '').length, 0);
 });
